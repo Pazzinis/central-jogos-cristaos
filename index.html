@@ -14,25 +14,27 @@
   </section>
   <section class="screen level-screen" data-screen="levels">
     <button class="back-button" data-action="home" aria-label="Voltar">←</button>
-    <div class="section-heading"><p class="eyebrow"><span></span> QUEM SOU EU?</p><h2>Escolha o<br><em>desafio.</em></h2><p>Cada nível tem personagens diferentes. Você tem 60 segundos!</p></div>
+    <div class="section-heading"><p class="eyebrow"><span></span> QUEM SOU EU?</p><h2>Escolha o<br><em>desafio.</em></h2><p>Cada nível tem personagens e um tempo de partida diferentes.</p></div>
     <div class="levels" role="group" aria-label="Escolha o nível">
-      <button class="level-card easy" data-level="easy"><span class="level-icon">1</span><span><small>PARA COMEÇAR</small><strong>Fácil</strong><em>Personagens bem conhecidos</em></span><b>→</b></button>
-      <button class="level-card medium" data-level="medium"><span class="level-icon">2</span><span><small>JÁ CONHEÇO</small><strong>Médio</strong><em>Um pouco mais desafiador</em></span><b>→</b></button>
-      <button class="level-card hard" data-level="hard"><span class="level-icon">3</span><span><small>MANJO MUITO</small><strong>Difícil</strong><em>Para quem conhece de verdade</em></span><b>→</b></button>
+      <button class="level-card easy" data-level="easy"><span class="level-icon">1</span><span><small>3 MINUTOS</small><strong>Fácil</strong><em>Personagens bem conhecidos</em></span><b>→</b></button>
+      <button class="level-card medium" data-level="medium"><span class="level-icon">2</span><span><small>2 MINUTOS</small><strong>Médio</strong><em>Um pouco mais desafiador</em></span><b>→</b></button>
+      <button class="level-card hard" data-level="hard"><span class="level-icon">3</span><span><small>1 MINUTO</small><strong>Difícil</strong><em>Para quem conhece de verdade</em></span><b>→</b></button>
     </div>
   </section>
   <section class="screen ready-screen" data-screen="ready">
     <button class="back-button" data-action="levels" aria-label="Voltar">←</button>
     <div class="ready-card"><div class="phone-demo"><span>MARIA</span></div><p class="eyebrow centered"><span></span> COMO JOGAR <span></span></p><h2>Celular na testa.<br>Tela <em>deitada.</em></h2>
       <div class="instructions"><div><b>↓</b><span><strong>Incline para baixo</strong><small>Acertou!</small></span></div><div><b>↑</b><span><strong>Incline para cima</strong><small>Pular</small></span></div></div>
-      <p class="level-label">Nível: <strong id="chosen-level">Fácil</strong></p><button class="primary-button" data-action="start">Começar <span>→</span></button>
+      <p class="level-label">Nível: <strong id="chosen-level">Fácil · 3 minutos</strong></p><button class="primary-button" data-action="start">Começar em tela cheia <span>→</span></button>
     </div>
   </section>
   <section class="screen countdown-screen" data-screen="countdown"><p>COLOQUE NA TESTA</p><div id="countdown-number">5</div><small>Prepare-se!</small></section>
   <section class="screen game-screen" data-screen="game">
-    <div class="game-hud"><button data-action="quit" aria-label="Encerrar">×</button><div class="score"><small>ACERTOS</small><strong id="score">0</strong></div><div class="timer"><span></span><strong id="timer">60</strong><small>s</small></div></div>
+    <div class="game-hud"><button data-action="quit" aria-label="Encerrar">×</button><div class="score"><small>ACERTOS</small><strong id="score">0</strong></div><div class="timer"><span></span><strong id="timer">3:00</strong></div></div>
     <div class="character-wrap"><p>QUEM SOU EU?</p><h2 id="character-name">MARIA</h2><small id="character-hint">Personagem bíblico</small></div><div class="tilt-feedback" id="tilt-feedback"></div>
     <div class="game-controls"><button data-action="pass"><span>↑</span> PULAR</button><p>INCLINE O CELULAR</p><button data-action="correct">ACERTEI <span>↓</span></button></div>
+    <div class="next-overlay" id="next-overlay"><p id="next-label">PRÓXIMO EM</p><strong id="next-count">3</strong></div>
+    <div class="roulette-overlay" id="roulette-overlay"><p>SORTEANDO...</p><strong id="roulette-name">MOISÉS</strong><div class="roulette-line"></div></div>
     <div class="rotate-overlay"><div>↻</div><strong>Gire o celular</strong><span>O jogo funciona com a tela deitada</span></div>
   </section>
   <section class="screen result-screen" data-screen="result"><p class="eyebrow centered"><span></span> FIM DE JOGO <span></span></p><h2>Mandou<br><em>muito bem!</em></h2><div class="result-score"><span id="final-score">0</span><small>ACERTOS</small></div><p id="result-message">Vocês fizeram uma ótima partida!</p><div class="result-actions"><button class="primary-button" data-action="replay">Jogar de novo <span>↻</span></button><button class="secondary-button" data-action="levels">Trocar nível</button></div></section>
