@@ -12,3 +12,56 @@
 @media(orientation:portrait){.game-screen.active .rotate-overlay{position:absolute;inset:0;background:var(--ink);color:#fff;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px}.rotate-overlay div{font-size:70px;color:var(--lime);animation:turn 1.8s infinite}.rotate-overlay strong{font-size:27px}.rotate-overlay span{color:#ffffff99;font-size:13px}@keyframes turn{50%{transform:rotate(90deg)}}}
 @media(max-height:650px) and (orientation:portrait){.hero{margin-top:45px}.hero h1{font-size:45px}.game-card{min-height:165px}.section-heading{margin:45px 0 15px}.section-heading h2{font-size:42px;margin:13px 0}.level-card{padding:13px 15px}.phone-demo{margin-top:28px;margin-bottom:17px}.ready-card h2{font-size:32px;margin:13px 0 17px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+/* Game transitions keep the next card hidden until it is ready. */
+.next-overlay,.roulette-overlay{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}
+.next-overlay.show,.roulette-overlay.show{opacity:1;visibility:visible}
+.next-overlay{background:var(--ink);color:#fff}
+.next-overlay p,.roulette-overlay p{margin:0 0 5px;font-size:9px;font-weight:800;letter-spacing:.25em}
+.next-overlay strong{font-family:'Playfair Display',serif;font-size:min(43vh,170px);font-style:italic;line-height:.9;color:var(--lime)}
+.roulette-overlay{background:var(--lime);color:var(--ink)}
+.roulette-overlay strong{width:90vw;overflow-wrap:anywhere;font-size:clamp(34px,10vw,86px);line-height:.95;letter-spacing:-.055em;text-transform:uppercase;animation:roulette-pop .15s ease infinite alternate}
+.roulette-line{width:min(72vw,560px);height:2px;background:var(--ink);margin-top:18px;box-shadow:0 -8px 0 #102e2512,0 8px 0 #102e2512}
+@keyframes roulette-pop{to{transform:scale(1.025);filter:blur(.35px)}}
+
+@media(orientation:landscape){
+  .game-screen{height:100dvh;min-height:0}
+  .game-hud{inset:max(10px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) auto max(18px,env(safe-area-inset-left))}
+  .game-hud button{width:32px;height:32px}
+  .score strong,.timer strong{font-size:clamp(20px,5vh,28px)}
+  .character-wrap{min-height:0;padding:clamp(48px,13vh,66px) max(70px,10vw) clamp(58px,17vh,76px)}
+  .character-wrap p{margin-bottom:3px;font-size:clamp(7px,2vh,10px)}
+  .character-wrap h2{max-width:88vw;margin:4px 0 8px;font-size:clamp(36px,min(12vw,22vh),96px);line-height:.87;overflow-wrap:anywhere;hyphens:auto}
+  .character-wrap small{font-size:clamp(9px,2.8vh,13px)}
+  .game-controls{min-height:clamp(52px,15vh,68px);padding-bottom:env(safe-area-inset-bottom)}
+  .game-controls button{height:clamp(52px,15vh,68px)}
+  .tilt-feedback{font-size:clamp(44px,15vh,100px)}
+}
+
+@media(orientation:landscape) and (max-height:430px){
+  .home-screen.active,.level-screen.active{gap:clamp(22px,5vw,45px);padding:16px 5vw}
+  .home-screen .topbar{top:12px;left:5vw;right:5vw}
+  .home-screen .hero,.level-screen .section-heading{margin:35px 0 0}
+  .hero h1,.section-heading h2{font-size:clamp(38px,10vh,54px);margin:12px 0}
+  .hero-copy,.section-heading>p:last-child{font-size:11px;margin-bottom:0}
+  .home-screen .game-card{margin-top:36px;min-height:min(58vh,210px);padding:18px}
+  .levels{margin-top:30px;gap:7px}
+  .level-card{padding:9px 13px;border-radius:15px;gap:11px}
+  .level-icon{width:36px;height:36px;border-radius:12px}
+  .level-card strong{font-size:18px}
+  .ready-screen{padding:12px 6vw}
+  .ready-screen .back-button{top:12px;left:16px}
+  .ready-card{max-width:720px;grid-template-columns:145px 1fr;column-gap:24px}
+  .phone-demo{width:138px;height:72px}
+  .ready-card h2{font-size:clamp(28px,8vh,38px);margin:3px 0 7px}
+  .ready-card .instructions{padding:7px 0}
+  .ready-card .level-label{margin:6px 0}
+  .ready-card .primary-button{padding:10px 16px}
+  .countdown-screen{gap:25px}
+  .countdown-screen p,.countdown-screen small{margin:0}
+  .result-screen.active{gap:6px 28px;padding-inline:7vw}
+  .result-screen h2{font-size:clamp(36px,11vh,48px);margin:6px 0}
+  .result-score{width:132px;height:132px}
+  .result-score span{font-size:60px}
+  .result-actions .primary-button,.result-actions .secondary-button{padding:12px 16px}
+}
