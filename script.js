@@ -24,7 +24,7 @@ function shuffle(items) {
 }
 
 const HISTORY_STORAGE_KEY = 'monte-content-history-v1';
-const SITE_URL = 'https://pazzinis.github.io/central-jogos-cristaos/';
+const SITE_URL = 'https://jogosdaraquel.vercel.app/';
 
 function itemIdentity(item) {
   if (Array.isArray(item)) return JSON.stringify(item);
