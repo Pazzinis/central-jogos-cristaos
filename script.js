@@ -174,7 +174,7 @@ function startGame() {
   }
   prepareDevice();
   if (state.game.mode === 'infiltrator') { startInfiltrator(); return; }
-  startCountdown(state.game.mode === 'cards' ? 5 : 3, () => {
+  startCountdown(5, () => {
     if (state.game.mode === 'cards') startCards();
     else if (state.game.mode === 'quiz') startQuiz();
     else if (state.game.mode === 'clues') startClues();
@@ -253,7 +253,7 @@ function cardFeedback(correct) {
 }
 
 function nextCardCountdown() {
-  const overlay=$('#transition-overlay'); const value=$('#transition-value'); overlay.className='transition-overlay show'; $('#transition-label').textContent='PRÓXIMO EM'; let count=3; value.textContent=count;
+  const overlay=$('#transition-overlay'); const value=$('#transition-value'); overlay.className='transition-overlay show'; $('#transition-label').textContent='PRÓXIMO EM'; let count=5; value.textContent=count;
   const tick=()=>{count-=1;if(count>0){value.textContent=count;beep(540+count*30,.05);state.jobs.push(setTimeout(tick,1000));}else{overlay.className='transition-overlay';state.index+=1;runRoulette();}};
   beep(540,.05); state.jobs.push(setTimeout(tick,1000));
 }
