@@ -4,17 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#102e25">
-  <meta name="description" content="Monte — uma central de jogos cristãos para jogar em grupo.">
-  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="description" content="Jogos da Raquel — uma central de jogos cristãos para jogar em grupo.">
+  <meta property="og:title" content="Jogos da Raquel — Jogos Cristãos">
+  <meta property="og:description" content="Uma central de jogos cristãos para jogar em grupo e apoiar a Raquel.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jogosdaraquel.vercel.app/">
+  <link rel="manifest" href="manifest.webmanifest?v=2">
   <link rel="stylesheet" href="styles.css?v=8">
-  <title>Monte — Jogos Cristãos</title>
+  <title>Jogos da Raquel — Jogos Cristãos</title>
 </head>
 <body>
 <main id="app" aria-live="polite">
   <section class="screen home-screen active" data-screen="home">
     <header class="topbar">
-      <button class="brand" data-action="home" aria-label="Monte, início"><span class="brand-mark">M</span><span>MONTE</span></button>
-      <button class="share-trigger" data-action="open-share" aria-label="Compartilhar a Central de Jogos Cristãos"><span aria-hidden="true">↗</span> Compartilhar</button>
+      <button class="brand" data-action="home" aria-label="Jogos da Raquel, início"><span class="brand-mark">R</span><span>JOGOS DA RAQUEL</span></button>
+      <button class="share-trigger" data-action="open-share" aria-label="Compartilhar Jogos da Raquel"><span aria-hidden="true">↗</span> Compartilhar</button>
     </header>
     <div class="home-hero">
       <div>
@@ -40,7 +44,7 @@
         <img src="raquel-vakinha.png" alt="Arte da campanha Ajude a Raquel, com fotos, meta de 45 mil reais e QR Code para doação" loading="lazy">
       </a>
     </section>
-    <footer>MONTE <span>·</span> Jogue, aprenda e compartilhe</footer>
+    <footer>JOGOS DA RAQUEL <span>·</span> Jogue, aprenda e compartilhe</footer>
   </section>
 
   <section class="screen setup-screen" data-screen="setup">
@@ -87,7 +91,7 @@
 <dialog class="share-dialog" id="share-dialog" aria-labelledby="share-title">
   <button class="share-close" data-action="close-share" aria-label="Fechar">×</button>
   <p class="eyebrow centered"><span></span> CHAME A GALERA <span></span></p>
-  <h2 id="share-title">Compartilhe o Monte</h2>
+  <h2 id="share-title">Compartilhe Jogos da Raquel</h2>
   <p>Aponte a câmera para o QR Code ou envie o link para quem vai jogar com você.</p>
   <div class="qr-frame"><img src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&amp;margin=12&amp;data=https%3A%2F%2Fjogosdaraquel.vercel.app%2F" alt="QR Code para abrir Jogos da Raquel" width="220" height="220"></div>
   <div class="share-actions"><button class="primary-button" data-action="share-site">Enviar link <span>↗</span></button><button class="secondary-button" data-action="copy-link">Copiar link</button></div>
@@ -103,6 +107,6 @@
 </dialog>
 <script src="data.js?v=8"></script>
 <script src="expansion.js?v=8"></script>
-<script src="script.js?v=9"></script>
+<script src="script.js?v=10"></script>
 </body>
 </html>

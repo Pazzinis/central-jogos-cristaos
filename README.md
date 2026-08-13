@@ -1,4 +1,4 @@
-# Monte — Central de Jogos Cristãos
+# Jogos da Raquel — Central de Jogos Cristãos
 
 Uma central com onze jogos cristãos para família, célula e amigos.
 

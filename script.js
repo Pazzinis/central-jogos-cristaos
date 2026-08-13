@@ -68,7 +68,7 @@ function rememberItem(key, item) {
 }
 
 function freshNote() {
-  return '<p class="fresh-note"><b>Novidade:</b> o Monte prioriza conteúdos que ainda não apareceram neste aparelho.</p>';
+  return '<p class="fresh-note"><b>Novidade:</b> Jogos da Raquel prioriza conteúdos que ainda não apareceram neste aparelho.</p>';
 }
 
 function beep(frequency = 620, duration = .08, delay = 0) {
@@ -377,7 +377,7 @@ async function copySiteLink() {
 
 async function shareSite() {
   if (navigator.share) {
-    try { await navigator.share({title:'Monte — Jogos Cristãos',text:'Uma central de jogos cristãos para jogar com a galera.',url:SITE_URL}); return; }
+    try { await navigator.share({title:'Jogos da Raquel — Jogos Cristãos',text:'Uma central de jogos cristãos para jogar com a galera e apoiar a Raquel.',url:SITE_URL}); return; }
     catch (error) { if (error?.name === 'AbortError') return; }
   }
   copySiteLink();
