@@ -14,6 +14,7 @@
   <section class="screen home-screen active" data-screen="home">
     <header class="topbar">
       <button class="brand" data-action="home" aria-label="Monte, início"><span class="brand-mark">M</span><span>MONTE</span></button>
+      <button class="share-trigger" data-action="open-share" aria-label="Compartilhar a Central de Jogos Cristãos"><span aria-hidden="true">↗</span> Compartilhar</button>
     </header>
     <div class="home-hero">
       <div>
@@ -21,7 +22,24 @@
       </div>
       <p>Reúna a galera, escolha um jogo e crie memórias que edificam.</p>
     </div>
+    <aside class="solidarity-banner" aria-labelledby="solidarity-banner-title">
+      <span class="solidarity-heart" aria-hidden="true">♡</span>
+      <div><small>UMA CORRENTE DE AMOR</small><h2 id="solidarity-banner-title">Ajude a Raquel a dar o próximo passo</h2><p>Ela está arrecadando para conquistar sua prótese. Doar ou compartilhar já faz diferença.</p></div>
+      <a href="#raquel-solidaria">Conhecer a história <span aria-hidden="true">↓</span></a>
+    </aside>
     <div class="game-grid" id="game-grid"></div>
+    <section class="solidarity-section" id="raquel-solidaria" aria-labelledby="solidarity-title">
+      <div class="solidarity-copy">
+        <p class="eyebrow"><span></span> CAMPANHA SOLIDÁRIA</p>
+        <h2 id="solidarity-title">Juntos pelo<br><em>próximo passo.</em></h2>
+        <p>Depois de uma amputação, Raquel Lucero está começando uma nova fase. Agora, o objetivo é conquistar uma prótese que trará mais independência, mobilidade e qualidade de vida.</p>
+        <p class="solidarity-note">Toda contribuição faz diferença. Se não puder doar, compartilhe esta história.</p>
+        <a class="donation-button" href="https://www.vakinha.com.br/vaquinha/juntos-pelo-meu-proximo-passo-raquel-lucero?utm_campaign=share-sharemodal&amp;utm_content=6259326&amp;utm_medium=share-bottom-link&amp;utm_source=socialshares-app-share" target="_blank" rel="noopener noreferrer">Ajudar na Vakinha <span aria-hidden="true">↗</span></a>
+      </div>
+      <a class="solidarity-poster" href="https://www.vakinha.com.br/vaquinha/juntos-pelo-meu-proximo-passo-raquel-lucero?utm_campaign=share-sharemodal&amp;utm_content=6259326&amp;utm_medium=share-bottom-link&amp;utm_source=socialshares-app-share" target="_blank" rel="noopener noreferrer" aria-label="Abrir a Vakinha da Raquel">
+        <img src="raquel-vakinha.png" alt="Arte da campanha Ajude a Raquel, com fotos, meta de 45 mil reais e QR Code para doação" loading="lazy">
+      </a>
+    </section>
     <footer>MONTE <span>·</span> Jogue, aprenda e compartilhe</footer>
   </section>
 
@@ -63,6 +81,15 @@
     <div class="result-actions"><button class="primary-button" data-action="replay">Jogar de novo <span>↻</span></button><button class="secondary-button" data-action="home">Voltar à central</button></div>
   </section>
 </main>
+<dialog class="share-dialog" id="share-dialog" aria-labelledby="share-title">
+  <button class="share-close" data-action="close-share" aria-label="Fechar">×</button>
+  <p class="eyebrow centered"><span></span> CHAME A GALERA <span></span></p>
+  <h2 id="share-title">Compartilhe o Monte</h2>
+  <p>Aponte a câmera para o QR Code ou envie o link para quem vai jogar com você.</p>
+  <div class="qr-frame"><img src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&amp;margin=12&amp;data=https%3A%2F%2Fpazzinis.github.io%2Fcentral-jogos-cristaos%2F" alt="QR Code para abrir a Central de Jogos Cristãos" width="220" height="220"></div>
+  <div class="share-actions"><button class="primary-button" data-action="share-site">Enviar link <span>↗</span></button><button class="secondary-button" data-action="copy-link">Copiar link</button></div>
+  <small id="copy-status" role="status"></small>
+</dialog>
 <script src="data.js"></script>
 <script src="expansion.js"></script>
 <script src="script.js"></script>
