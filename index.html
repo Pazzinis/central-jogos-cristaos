@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#102e25">
   <meta name="description" content="Monte — uma central de jogos cristãos para jogar em grupo.">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=8">
   <title>Monte — Jogos Cristãos</title>
 </head>
 <body>
@@ -57,7 +57,9 @@
 
   <section class="screen countdown-screen" data-screen="countdown">
     <p id="countdown-label">PREPARE-SE</p><strong id="countdown-number">5</strong><small>O jogo vai começar</small>
-    <a class="countdown-solidarity" href="https://www.vakinha.com.br/vaquinha/juntos-pelo-meu-proximo-passo-raquel-lucero?utm_campaign=share-sharemodal&amp;utm_content=6259326&amp;utm_medium=share-bottom-link&amp;utm_source=socialshares-app-share" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">♡</span> Enquanto se prepara, conheça e compartilhe a Vakinha da Raquel <b aria-hidden="true">↗</b></a>
+    <a class="countdown-solidarity" href="https://www.vakinha.com.br/vaquinha/juntos-pelo-meu-proximo-passo-raquel-lucero?utm_campaign=share-sharemodal&amp;utm_content=6259326&amp;utm_medium=share-bottom-link&amp;utm_source=socialshares-app-share" target="_blank" rel="noopener noreferrer">
+      <span class="countdown-heart" aria-hidden="true">♡</span><span><small>UMA CORRENTE DE AMOR</small><b>Ajude a Raquel a conquistar sua prótese</b></span><i>Conhecer</i>
+    </a>
   </section>
 
   <section class="screen play-screen" data-screen="play">
@@ -70,7 +72,7 @@
     <div class="play-stage" id="play-stage"></div>
     <div class="play-actions" id="play-actions"></div>
     <div class="feedback-overlay" id="feedback-overlay"></div>
-    <div class="transition-overlay" id="transition-overlay"><small id="transition-label">PRÓXIMO EM</small><strong id="transition-value">5</strong><span class="transition-solidarity">♡ Lembrete: ajude ou compartilhe a campanha da Raquel.</span></div>
+    <div class="transition-overlay" id="transition-overlay"><small id="transition-label">PRÓXIMO EM</small><strong id="transition-value">5</strong><span class="transition-solidarity"><b>Campanha da Raquel</b> Doe ou compartilhe essa história.</span></div>
     <div class="rotate-overlay" id="rotate-overlay"><b>↻</b><strong>Gire o celular</strong><span>Este jogo funciona melhor com a tela deitada</span></div>
   </section>
 
@@ -91,8 +93,16 @@
   <div class="share-actions"><button class="primary-button" data-action="share-site">Enviar link <span>↗</span></button><button class="secondary-button" data-action="copy-link">Copiar link</button></div>
   <small id="copy-status" role="status"></small>
 </dialog>
-<script src="data.js"></script>
-<script src="expansion.js"></script>
-<script src="script.js"></script>
+<dialog class="campaign-dialog" id="campaign-dialog" aria-labelledby="campaign-dialog-title">
+  <span class="campaign-dialog-heart" aria-hidden="true">♡</span>
+  <p>ANTES DE CONTINUAR</p>
+  <h2 id="campaign-dialog-title">Um gesto pode mudar uma história.</h2>
+  <p>Ajude a Raquel a conquistar sua prótese. Se não puder doar, compartilhar também faz diferença.</p>
+  <a href="https://www.vakinha.com.br/vaquinha/juntos-pelo-meu-proximo-passo-raquel-lucero?utm_campaign=share-sharemodal&amp;utm_content=6259326&amp;utm_medium=share-bottom-link&amp;utm_source=socialshares-app-share" target="_blank" rel="noopener noreferrer">Conhecer a Vakinha</a>
+  <button data-action="close-campaign">OK, continuar</button>
+</dialog>
+<script src="data.js?v=8"></script>
+<script src="expansion.js?v=8"></script>
+<script src="script.js?v=8"></script>
 </body>
 </html>
