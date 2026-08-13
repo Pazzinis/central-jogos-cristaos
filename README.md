@@ -6,4 +6,6 @@ Inclui **Quem Sou Eu?**, Mímica Bíblica, Desenho Bíblico no papel, Complete o
 
 Os jogos compartilham cronômetros, pontuação, roleta, equipes, tela cheia e uma interface responsiva. O Quem Sou Eu? usa somente personagens conhecidos em todos os ritmos; a escolha altera apenas o tempo da partida.
 
+O banco ampliado oferece 661 itens jogáveis: 65 personagens, 74 mímicas, 74 desenhos, 70 desafios de emoji, 132 perguntas na Batalha e dezenas de versículos, pistas, palavras proibidas e pares para O Infiltrado.
+
 Projeto estático pronto para GitHub Pages.
