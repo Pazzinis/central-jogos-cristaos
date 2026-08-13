@@ -10,7 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jogosdaraquel.vercel.app/">
   <link rel="manifest" href="manifest.webmanifest?v=2">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
   <title>Jogos da Raquel — Jogos Cristãos</title>
 </head>
 <body>
@@ -31,6 +31,11 @@
       <div><small>UMA CORRENTE DE AMOR</small><h2 id="solidarity-banner-title">Ajude a Raquel a dar o próximo passo</h2><p>Ela está arrecadando para conquistar sua prótese. Doar ou compartilhar já faz diferença.</p></div>
       <a href="#raquel-solidaria">Conhecer a história <span aria-hidden="true">↓</span></a>
     </aside>
+    <section class="rooms-test-entry" id="rooms-test-entry" hidden aria-labelledby="rooms-test-title">
+      <span class="rooms-test-badge">TESTE LOCAL</span>
+      <div><small>JOGUE EM GRUPO</small><h2 id="rooms-test-title">Uma sala, várias telas.</h2><p>Crie um código, convide a galera e jogue Imagem Revelada em sincronia.</p></div>
+      <button data-room-action="open-entry">Criar ou entrar em uma sala <span>→</span></button>
+    </section>
     <div class="game-grid" id="game-grid"></div>
     <section class="solidarity-section" id="raquel-solidaria" aria-labelledby="solidarity-title">
       <div class="solidarity-copy">
@@ -57,6 +62,65 @@
       <div class="how-box"><strong>Como jogar</strong><p id="setup-rules"></p></div>
     </div>
     <div class="setup-panel" id="setup-panel"></div>
+  </section>
+
+  <section class="screen room-entry-screen" data-screen="room-entry">
+    <button class="round-back" data-room-action="home" aria-label="Voltar à central">←</button>
+    <div class="room-entry-copy">
+      <span class="rooms-test-badge">SIMULAÇÃO LOCAL</span>
+      <p class="eyebrow"><span></span> SALAS DE JOGO</p>
+      <h2>Todo mundo<br><em>na mesma rodada.</em></h2>
+      <p>Nesta primeira versão, a sala funciona entre abas deste navegador. Quando o Firebase for conectado, o mesmo fluxo funcionará em celulares diferentes.</p>
+    </div>
+    <div class="room-entry-panel">
+      <label for="room-nickname">SEU APELIDO</label>
+      <input id="room-nickname" maxlength="20" autocomplete="nickname" placeholder="Como vão chamar você?">
+      <button class="room-primary" data-room-action="create">Criar uma sala <span>→</span></button>
+      <div class="room-divider"><span>OU ENTRE COM O CÓDIGO</span></div>
+      <label for="room-code-input">CÓDIGO DA SALA</label>
+      <input class="room-code-input" id="room-code-input" maxlength="6" inputmode="text" autocomplete="off" placeholder="ABC123">
+      <button class="room-secondary" data-room-action="join">Entrar na sala</button>
+      <p id="room-entry-status" class="room-entry-status" role="status"></p>
+    </div>
+  </section>
+
+  <section class="screen room-lobby-screen" data-screen="room-lobby">
+    <header class="room-lobby-header">
+      <button class="round-back room-back-dark" data-room-action="home" aria-label="Voltar à central">←</button>
+      <div><small>SALA</small><button id="room-code" data-room-action="copy-code" title="Copiar código">------</button></div>
+      <span class="rooms-test-badge">LOCAL</span>
+    </header>
+    <div class="room-lobby-grid">
+      <section class="room-share-card">
+        <p class="eyebrow"><span></span> CONVIDE A GALERA</p>
+        <h2>Compartilhe<br><em>a sala.</em></h2>
+        <div class="room-qr-frame"><img id="room-qr" width="180" height="180" alt="QR Code do convite da sala"></div>
+        <input id="room-invite-url" readonly aria-label="Link de convite">
+        <div class="room-share-actions"><button data-room-action="share-invite">Enviar convite</button><button data-room-action="copy-invite">Copiar link</button></div>
+        <small>Simulação: abra o link em outra aba deste navegador.</small>
+      </section>
+      <section class="room-players-card">
+        <div class="room-card-title"><div><small>NA SALA</small><h3>Participantes</h3></div><b id="room-player-count">1 pessoa</b></div>
+        <ul id="room-player-list"></ul>
+      </section>
+      <section class="room-game-card">
+        <div class="room-card-title"><div><small>JOGO ESCOLHIDO</small><h3>Imagem Revelada</h3></div><span>◫</span></div>
+        <p>A ilustração aparece igual para todos e vai ficando mais clara a cada 5 segundos.</p>
+        <div id="room-host-controls"><button class="room-primary" data-room-action="start">Começar partida <span>→</span></button></div>
+        <p id="room-guest-note" class="room-guest-note">Aguardando o organizador começar.</p>
+      </section>
+    </div>
+  </section>
+
+  <section class="screen room-game-screen" data-screen="room-game">
+    <header class="room-game-hud">
+      <button data-room-action="home" aria-label="Sair da partida">×</button>
+      <div><small>IMAGEM REVELADA</small><strong id="room-game-round">RODADA 1 / 5</strong></div>
+      <div><small>PONTOS</small><strong id="room-game-score">0</strong></div>
+      <div><small>TEMPO</small><strong id="room-game-timer">20s</strong></div>
+    </header>
+    <div class="room-game-stage" id="room-game-stage"></div>
+    <div class="room-game-actions" id="room-game-actions"></div>
   </section>
 
   <section class="screen countdown-screen" data-screen="countdown">
@@ -88,6 +152,7 @@
     <div class="result-actions"><button class="primary-button" data-action="replay">Jogar de novo <span>↻</span></button><button class="secondary-button" data-action="home">Voltar à central</button></div>
   </section>
 </main>
+<div class="room-toast" id="room-toast" role="status"></div>
 <dialog class="share-dialog" id="share-dialog" aria-labelledby="share-title">
   <button class="share-close" data-action="close-share" aria-label="Fechar">×</button>
   <p class="eyebrow centered"><span></span> CHAME A GALERA <span></span></p>
@@ -109,5 +174,7 @@
 <script src="expansion.js?v=8"></script>
 <script src="new-games.js?v=1"></script>
 <script src="script.js?v=12"></script>
+<script src="room-local-service.js?v=1"></script>
+<script src="rooms.js?v=1"></script>
 </body>
 </html>
