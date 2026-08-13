@@ -71,17 +71,15 @@ function renderCatalog() {
     'Visual':'Histórias bíblicas contadas de um jeito diferente.',
     'Festa':'Jogos sociais para conversar, desconfiar e rir.'
   };
-  const slug = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  $('#category-nav').innerHTML = order.map((category) => `<a href="#categoria-${slug(category)}">${category}</a>`).join('');
   $('#game-grid').innerHTML = order.map((category, categoryIndex) => {
     const games = DATA.games.filter((game) => game.category === category);
     if (!games.length) return '';
-    return `<section class="category-section" id="categoria-${slug(category)}">
-      <header class="category-heading"><span class="category-number">0${categoryIndex + 1}</span><div><h2>${category}</h2><p>${descriptions[category]}</p></div><b>${games.length} ${games.length === 1 ? 'jogo' : 'jogos'}</b></header>
+    return `<section class="category-section">
+      <header class="category-heading"><div><h2>${category}</h2><p>${descriptions[category]}</p></div><b>${games.length} ${games.length === 1 ? 'jogo' : 'jogos'}</b></header>
       <div class="category-list">${games.map((game) => `
         <button class="catalog-card ${game.id === 'who' ? 'featured' : ''}" data-game="${game.id}" data-accent="${game.accent}" aria-label="Jogar ${game.title}">
           <span class="catalog-icon" aria-hidden="true">${game.icon}</span>
-          <span class="card-copy"><span class="card-meta"><b>JOGO ${game.number}</b><span>${game.category}</span></span><h3>${game.title}</h3><p>${game.description}</p></span>
+          <span class="card-copy"><h3>${game.title}</h3><p>${game.description}</p></span>
           <span class="card-arrow">→</span>
         </button>`).join('')}</div>
     </section>`;
@@ -92,7 +90,7 @@ function openSetup(gameId) {
   clearRunning();
   state.game = DATA.games.find((game) => game.id === gameId);
   $('#setup-icon').textContent = state.game.icon;
-  $('#setup-kicker').textContent = `JOGO ${state.game.number} · ${state.game.category}`;
+  $('#setup-kicker').textContent = state.game.category.toUpperCase();
   $('#setup-title').textContent = state.game.title;
   $('#setup-description').textContent = state.game.description;
   $('#setup-rules').textContent = state.game.rules;
