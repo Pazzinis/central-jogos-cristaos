@@ -4,7 +4,7 @@ const screens = [...document.querySelectorAll('.screen')];
 const state = {
   game: null, duration: 180, rounds: 10, players: 5, teamA: 'Equipe Luz', teamB: 'Equipe Fé',
   deck: [], index: 0, score: 0, seconds: 0, active: false, locked: false, baseline: null,
-  timer: null, countdown: null, jobs: [], answered: false, clueCount: 1,
+  timer: null, countdown: null, jobs: [], answered: false, clueCount: 1, historyKey: '',
   teams: [0, 0], currentTeam: 0, playerIndex: 0, infiltratorIndex: 0, secretPair: null, secretVisible: false
 };
 let audioContext;
@@ -21,6 +21,54 @@ function shuffle(items) {
     [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
   }
   return result;
+}
+
+const HISTORY_STORAGE_KEY = 'monte-content-history-v1';
+const SITE_URL = 'https://pazzinis.github.io/central-jogos-cristaos/';
+
+function itemIdentity(item) {
+  if (Array.isArray(item)) return JSON.stringify(item);
+  if (item?.q) return item.q;
+  if (item?.word) return item.word;
+  if (item?.answer && item?.clues) return item.answer;
+  return JSON.stringify(item);
+}
+
+function readHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '{}'); }
+  catch (_) { return {}; }
+}
+
+function writeHistory(history) {
+  try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)); }
+  catch (_) {}
+}
+
+function freshDeck(items, key) {
+  const history = readHistory();
+  let seen = new Set(history[key] || []);
+  const identities = items.map(itemIdentity);
+  if (identities.length && identities.every((identity) => seen.has(identity))) {
+    seen = new Set();
+    history[key] = [];
+    writeHistory(history);
+  }
+  const unseen = items.filter((item) => !seen.has(itemIdentity(item)));
+  const previous = items.filter((item) => seen.has(itemIdentity(item)));
+  return [...shuffle(unseen), ...shuffle(previous)];
+}
+
+function rememberItem(key, item) {
+  if (!key || !item) return;
+  const history = readHistory();
+  const seen = new Set(history[key] || []);
+  seen.add(itemIdentity(item));
+  history[key] = [...seen];
+  writeHistory(history);
+}
+
+function freshNote() {
+  return '<p class="fresh-note"><b>Novidade:</b> o Monte prioriza conteúdos que ainda não apareceram neste aparelho.</p>';
 }
 
 function beep(frequency = 620, duration = .08, delay = 0) {
@@ -103,20 +151,20 @@ function renderSetupPanel() {
     panel.innerHTML = `<h3>Escolha o ritmo</h3><p>O conteúdo é o mesmo; muda apenas o tempo da rodada.</p>
       <div class="choice-list">
         ${[[180,'Relaxado','3 minutos'],[120,'Normal','2 minutos'],[60,'Relâmpago','1 minuto']].map(([value,title,label]) => `<button class="choice-button ${state.duration === value ? 'selected' : ''}" data-duration="${value}"><span><strong>${title}</strong><small>${label}</small></span><b>${label}</b></button>`).join('')}
-      </div><button class="primary-button" data-action="start-game">Começar em tela cheia <span>→</span></button>`;
+      </div>${freshNote()}<button class="primary-button" data-action="start-game">Começar em tela cheia <span>→</span></button>`;
   } else if (state.game.mode === 'quiz' || state.game.mode === 'clues') {
     panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>Jogue sozinho ou responda em grupo.</p>
       <div class="choice-list">${[5,10].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 5 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
-      <button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
+      ${freshNote()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
   } else if (state.game.mode === 'battle') {
     panel.innerHTML = `<h3>Prepare as equipes</h3><p>Serão 10 perguntas, alternando automaticamente.</p>
       <div class="field"><label for="team-a">Equipe A</label><input id="team-a" maxlength="20" value="${state.teamA}"></div>
       <div class="field"><label for="team-b">Equipe B</label><input id="team-b" maxlength="20" value="${state.teamB}"></div>
-      <button class="primary-button" data-action="start-game">Iniciar batalha <span>⚡</span></button>`;
+      ${freshNote()}<button class="primary-button" data-action="start-game">Iniciar batalha <span>⚡</span></button>`;
   } else {
     panel.innerHTML = `<h3>Quantos jogadores?</h3><p>O celular será passado de mão em mão.</p>
       <div class="stepper"><button data-action="players-down" aria-label="Diminuir jogadores">−</button><strong><span id="players-count">${state.players}</span> jogadores</strong><button data-action="players-up" aria-label="Aumentar jogadores">+</button></div>
-      <button class="primary-button" data-action="start-game">Distribuir palavras <span>◉</span></button>`;
+      ${freshNote()}<button class="primary-button" data-action="start-game">Distribuir palavras <span>◉</span></button>`;
   }
 }
 
@@ -160,7 +208,7 @@ function cardSource() {
 }
 
 function startCards() {
-  state.deck = shuffle(cardSource()); state.index = 0; state.score = 0; state.seconds = state.duration; state.active = true; state.locked = true;
+  state.historyKey = `cards:${state.game.id}`; state.deck = freshDeck(cardSource(), state.historyKey); state.index = 0; state.score = 0; state.seconds = state.duration; state.active = true; state.locked = true;
   configurePlay(); $('#score-label').textContent = 'ACERTOS'; $('#timer').textContent = formatTime(state.seconds);
   state.timer = setInterval(() => {
     state.seconds -= 1; $('#timer').textContent = formatTime(Math.max(0,state.seconds));
@@ -173,8 +221,9 @@ function startCards() {
 function cardTitle(card) { return state.game.id === 'taboo' ? card.word : card[0]; }
 
 function renderCard() {
-  if (state.index >= state.deck.length) { state.deck = shuffle(cardSource()); state.index = 0; }
+  if (state.index >= state.deck.length) { state.deck = freshDeck(cardSource(), state.historyKey); state.index = 0; }
   const card = state.deck[state.index];
+  rememberItem(state.historyKey, card);
   let content = '';
   if (state.game.id === 'taboo') content = `<p class="stage-kicker">FAÇA ADIVINHAR</p><h2 class="stage-title">${card.word}</h2><p class="stage-subtitle">Não pode falar:</p><div class="forbidden">${card.forbidden.map((word) => `<span>${word}</span>`).join('')}</div>`;
   else if (state.game.id === 'emoji') content = `<p class="stage-kicker">QUAL É A HISTÓRIA?</p><h2 class="emoji-title">${card[0]}</h2><p class="stage-subtitle" id="emoji-answer">Toque em “Mostrar resposta” se precisar</p>`;
@@ -210,11 +259,11 @@ function nextCardCountdown() {
 }
 
 function startQuiz() {
-  state.deck=shuffle(DATA.quizzes[state.game.id]).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;configurePlay();renderQuestion();
+  state.historyKey=`quiz:${state.game.id}`;state.deck=freshDeck(DATA.quizzes[state.game.id],state.historyKey).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;configurePlay();renderQuestion();
 }
 
 function renderQuestion() {
-  if(state.index>=state.deck.length){finish('quiz');return;} state.answered=false;const item=state.deck[state.index];
+  if(state.index>=state.deck.length){finish('quiz');return;} state.answered=false;const item=state.deck[state.index];rememberItem(state.historyKey,item);
   $('#turn-label').textContent=`PERGUNTA ${state.index+1} DE ${state.deck.length}`;$('#score').textContent=state.score;
   $('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">ESCOLHA UMA RESPOSTA</p><h2 class="quiz-question">${item.q}</h2><div class="options">${item.options.map((option,index)=>`<button class="option" data-answer="${index}">${option}</button>`).join('')}</div><div class="explanation" id="explanation">${item.explanation}</div></div>`;
   $('#play-actions').innerHTML='';
@@ -228,22 +277,22 @@ function answerQuestion(answerIndex) {
 }
 
 function startClues() {
-  state.deck=shuffle(DATA.clues).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;state.clueCount=1;configurePlay();renderClue();
+  state.historyKey='clues';state.deck=freshDeck(DATA.clues,state.historyKey).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;state.clueCount=1;configurePlay();renderClue();
 }
 
 function renderClue(revealAnswer=false) {
-  if(state.index>=state.deck.length){finish('clues');return;}const item=state.deck[state.index];$('#turn-label').textContent=`RODADA ${state.index+1} DE ${state.deck.length}`;$('#score').textContent=state.score;
+  if(state.index>=state.deck.length){finish('clues');return;}const item=state.deck[state.index];rememberItem(state.historyKey,item);$('#turn-label').textContent=`RODADA ${state.index+1} DE ${state.deck.length}`;$('#score').textContent=state.score;
   $('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">VALENDO ${6-state.clueCount} ${6-state.clueCount===1?'PONTO':'PONTOS'}</p><h2 class="quiz-question">Quem é o personagem?</h2><div class="clue-list">${item.clues.slice(0,state.clueCount).map((clue,index)=>`<div class="clue"><b>${index+1}</b>${clue}</div>`).join('')}</div>${revealAnswer?`<div class="answer-reveal">${item.answer}</div>`:''}</div>`;
   if(revealAnswer)$('#play-actions').innerHTML='<button class="action-primary" data-action="next-clue-card">Próximo personagem →</button>';
   else $('#play-actions').innerHTML=`<button class="action-secondary" data-action="more-clue" ${state.clueCount===5?'disabled':''}>+ Outra pista</button><button class="action-secondary" data-action="give-up-clue">Não sei</button><button class="action-primary" data-action="got-clue">Acertei!</button>`;
 }
 
 function startBattle() {
-  const pool=[...DATA.quizzes.truth,...DATA.quizzes.quote,...DATA.quizzes.verse];state.deck=shuffle(pool).slice(0,10);state.index=0;state.teams=[0,0];state.currentTeam=0;state.active=true;configurePlay();$('#score-label').textContent='RODADA';renderBattle();
+  const pool=[...DATA.quizzes.truth,...DATA.quizzes.quote,...DATA.quizzes.verse];state.historyKey='battle';state.deck=freshDeck(pool,state.historyKey).slice(0,10);state.index=0;state.teams=[0,0];state.currentTeam=0;state.active=true;configurePlay();$('#score-label').textContent='RODADA';renderBattle();
 }
 
 function renderBattle() {
-  if(state.index>=state.deck.length){finish('battle');return;}state.answered=false;const item=state.deck[state.index];const names=[state.teamA,state.teamB];$('#score').textContent=`${state.index+1}/10`;$('#turn-label').textContent=`VEZ DE ${names[state.currentTeam].toUpperCase()}`;
+  if(state.index>=state.deck.length){finish('battle');return;}state.answered=false;const item=state.deck[state.index];rememberItem(state.historyKey,item);const names=[state.teamA,state.teamB];$('#score').textContent=`${state.index+1}/10`;$('#turn-label').textContent=`VEZ DE ${names[state.currentTeam].toUpperCase()}`;
   $('#play-stage').innerHTML=`<div class="stage-inner"><div class="team-board">${names.map((name,index)=>`<span class="team-pill ${index===state.currentTeam?'active':''}">${name}<b>${state.teams[index]}</b></span>`).join('')}</div><h2 class="quiz-question">${item.q}</h2><div class="options">${item.options.map((option,index)=>`<button class="option" data-battle-answer="${index}">${option}</button>`).join('')}</div><div class="explanation" id="explanation">${item.explanation}</div></div>`;$('#play-actions').innerHTML='';
 }
 
@@ -254,7 +303,7 @@ function answerBattle(answerIndex) {
 }
 
 function startInfiltrator() {
-  state.secretPair=DATA.infiltrator[Math.floor(Math.random()*DATA.infiltrator.length)];state.infiltratorIndex=Math.floor(Math.random()*state.players);state.playerIndex=0;state.secretVisible=false;state.active=true;configurePlay();
+  state.historyKey='infiltrator';state.secretPair=freshDeck(DATA.infiltrator,state.historyKey)[0];rememberItem(state.historyKey,state.secretPair);state.infiltratorIndex=Math.floor(Math.random()*state.players);state.playerIndex=0;state.secretVisible=false;state.active=true;configurePlay();
   $('#score-label').textContent='JOGADORES';$('#score').textContent=state.players;renderSecretPass();
 }
 
@@ -281,6 +330,38 @@ function finish(type) {
   $('#final-score').textContent=final;$('#final-label').textContent=label;$('#result-message').textContent=message;showScreen('result');try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}
 }
 
+function openShare() {
+  const dialog = $('#share-dialog');
+  $('#copy-status').textContent = '';
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+}
+
+function closeShare() {
+  const dialog = $('#share-dialog');
+  if (typeof dialog.close === 'function') dialog.close();
+  else dialog.removeAttribute('open');
+}
+
+async function copySiteLink() {
+  try {
+    await navigator.clipboard.writeText(SITE_URL);
+  } catch (_) {
+    const input = document.createElement('textarea');
+    input.value = SITE_URL; input.setAttribute('readonly', ''); input.style.position = 'fixed'; input.style.opacity = '0';
+    document.body.appendChild(input); input.select(); document.execCommand('copy'); input.remove();
+  }
+  $('#copy-status').textContent = 'Link copiado! Agora é só enviar.';
+}
+
+async function shareSite() {
+  if (navigator.share) {
+    try { await navigator.share({title:'Monte — Jogos Cristãos',text:'Uma central de jogos cristãos para jogar com a galera.',url:SITE_URL}); return; }
+    catch (error) { if (error?.name === 'AbortError') return; }
+  }
+  copySiteLink();
+}
+
 window.addEventListener('deviceorientation',(event)=>{
   if(state.game?.id!=='who'||!state.active||state.locked||event.beta==null||event.gamma==null)return;const angle=screen.orientation?.angle??window.orientation??0;const value=Math.abs(angle)===90?(angle===90?-event.gamma:event.gamma):event.beta;
   if(state.baseline==null){state.baseline=value;return;}const delta=value-state.baseline;if(delta>30)cardFeedback(true);else if(delta<-30)cardFeedback(false);else state.baseline=state.baseline*.98+value*.02;
@@ -295,6 +376,10 @@ document.addEventListener('click',(event)=>{
   if(target.dataset.battleAnswer!==undefined){answerBattle(Number(target.dataset.battleAnswer));return;}
   const action=target.dataset.action;
   if(action==='home'){clearRunning();showScreen('home');}
+  else if(action==='open-share')openShare();
+  else if(action==='close-share')closeShare();
+  else if(action==='copy-link')copySiteLink();
+  else if(action==='share-site')shareSite();
   else if(action==='quit')finish(state.game?.mode==='battle'?'battle':state.game?.mode==='cards'?'cards':state.game?.mode==='infiltrator'?'infiltrator':'quiz');
   else if(action==='start-game')startGame();
   else if(action==='players-down'){state.players=Math.max(3,state.players-1);renderSetupPanel();}
