@@ -4,7 +4,7 @@ const screens = [...document.querySelectorAll('.screen')];
 const state = {
   game: null, duration: 180, rounds: 10, players: 5, teamA: 'Equipe Luz', teamB: 'Equipe Fé',
   deck: [], index: 0, score: 0, seconds: 0, active: false, locked: false, baseline: null,
-  timer: null, countdown: null, jobs: [], answered: false, clueCount: 1, historyKey: '',
+  timer: null, countdown: null, jobs: [], answered: false, clueCount: 1, historyKey: '', timerDeadline: 0,
   teams: [0, 0], currentTeam: 0, playerIndex: 0, infiltratorIndex: 0, secretPair: null, secretVisible: false
 };
 let audioContext;
@@ -185,12 +185,15 @@ function startGame() {
 
 function startCountdown(from, done) {
   showScreen('countdown'); $('#countdown-label').textContent = 'PREPARE-SE'; $('#countdown-number').textContent = from; beep(560);
+  const deadline = Date.now() + from * 1000;
   let value = from;
   state.countdown = setInterval(() => {
-    value -= 1;
+    const nextValue = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    if (nextValue === value) return;
+    value = nextValue;
     if (value > 0) { $('#countdown-number').textContent = value; beep(580 + value * 25); }
-    else { clearInterval(state.countdown); beep(880,.16); done(); }
-  }, 1000);
+    else { clearInterval(state.countdown); state.countdown = null; beep(880,.16); done(); }
+  }, 100);
 }
 
 function configurePlay() {
@@ -209,13 +212,15 @@ function cardSource() {
 }
 
 function startCards() {
-  state.historyKey = `cards:${state.game.id}`; state.deck = freshDeck(cardSource(), state.historyKey); state.index = 0; state.score = 0; state.seconds = state.duration; state.active = true; state.locked = true;
+  state.historyKey = `cards:${state.game.id}`; state.deck = freshDeck(cardSource(), state.historyKey); state.index = 0; state.score = 0; state.seconds = state.duration; state.timerDeadline = Date.now() + state.duration * 1000; state.active = true; state.locked = true;
   configurePlay(); $('#score-label').textContent = 'ACERTOS'; $('#timer').textContent = formatTime(state.seconds);
   state.timer = setInterval(() => {
-    state.seconds -= 1; $('#timer').textContent = formatTime(Math.max(0,state.seconds));
+    const nextSeconds = Math.max(0, Math.ceil((state.timerDeadline - Date.now()) / 1000));
+    if (nextSeconds === state.seconds) return;
+    state.seconds = nextSeconds; $('#timer').textContent = formatTime(state.seconds);
     if (state.seconds <= 10 && state.seconds > 0) beep(480,.04);
     if (state.seconds <= 0) finish('cards');
-  }, 1000);
+  }, 250);
   runRoulette();
 }
 
@@ -254,9 +259,10 @@ function cardFeedback(correct) {
 }
 
 function nextCardCountdown() {
-  const overlay=$('#transition-overlay'); const value=$('#transition-value'); overlay.className='transition-overlay show'; $('#transition-label').textContent='PRÓXIMO EM'; let count=5; value.textContent=count;
-  const tick=()=>{count-=1;if(count>0){value.textContent=count;beep(540+count*30,.05);state.jobs.push(setTimeout(tick,1000));}else{overlay.className='transition-overlay';state.index+=1;runRoulette();}};
-  beep(540,.05); state.jobs.push(setTimeout(tick,1000));
+  const overlay=$('#transition-overlay'); const value=$('#transition-value'); overlay.className='transition-overlay show'; $('#transition-label').textContent='PRÓXIMO EM'; let count=5; value.textContent=count; const deadline=Date.now()+5000;
+  beep(540,.05);
+  const job=setInterval(()=>{const nextCount=Math.max(0,Math.ceil((deadline-Date.now())/1000));if(nextCount===count)return;count=nextCount;if(count>0){value.textContent=count;beep(540+count*30,.05);}else{clearInterval(job);overlay.className='transition-overlay';state.index+=1;runRoulette();}},100);
+  state.jobs.push(job);
 }
 
 function startQuiz() {
