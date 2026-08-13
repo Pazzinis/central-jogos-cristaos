@@ -137,6 +137,7 @@ function renderCatalog() {
 function openSetup(gameId) {
   clearRunning();
   state.game = DATA.games.find((game) => game.id === gameId);
+  $('.setup-screen').dataset.mode = state.game.mode;
   $('#setup-icon').textContent = state.game.icon;
   $('#setup-kicker').textContent = state.game.category.toUpperCase();
   $('#setup-title').textContent = state.game.title;
@@ -319,6 +320,7 @@ function finishSecretDistribution() {
 
 function revealInfiltrator() {
   $('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">O INFILTRADO ERA</p><h2 class="stage-title">Jogador ${state.infiltratorIndex+1}</h2><p class="stage-subtitle">Grupo: <b>${state.secretPair[0]}</b> · Infiltrado: <b>${state.secretPair[1]}</b></p></div>`;$('#play-actions').innerHTML='<button class="action-primary" data-action="replay">Jogar novamente ↻</button><button class="action-secondary" data-action="home">Voltar à central</button>';beep(620,.12);beep(850,.2,.13);
+  state.jobs.push(setTimeout(openCampaignReminder, 650));
 }
 
 function finish(type) {
@@ -327,7 +329,20 @@ function finish(type) {
   if(type==='battle'){const names=[state.teamA,state.teamB];final=`${state.teams[0]} × ${state.teams[1]}`;label=`${names[0]} · ${names[1]}`;message=state.teams[0]===state.teams[1]?'Empate! As duas equipes mandaram muito bem.':`${names[state.teams[0]>state.teams[1]?0:1]} venceu a batalha!`;}
   else if(type==='cards'){label='ACERTOS';message=state.score>=10?'Vocês estão afiados! Que rodada incrível.':state.score>=5?'Mandaram muito bem nessa rodada!':'Boa tentativa! A próxima vai ser ainda melhor.';}
   else message=`Você acertou ${state.score} de ${state.deck.length}.`;
-  $('#final-score').textContent=final;$('#final-label').textContent=label;$('#result-message').textContent=message;showScreen('result');try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}
+  $('#final-score').textContent=final;$('#final-label').textContent=label;$('#result-message').textContent=message;showScreen('result');state.jobs.push(setTimeout(openCampaignReminder,650));try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}
+}
+
+function openCampaignReminder() {
+  const dialog = $('#campaign-dialog');
+  if (dialog.open) return;
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+}
+
+function closeCampaignReminder() {
+  const dialog = $('#campaign-dialog');
+  if (typeof dialog.close === 'function') dialog.close();
+  else dialog.removeAttribute('open');
 }
 
 function openShare() {
@@ -380,6 +395,7 @@ document.addEventListener('click',(event)=>{
   else if(action==='close-share')closeShare();
   else if(action==='copy-link')copySiteLink();
   else if(action==='share-site')shareSite();
+  else if(action==='close-campaign')closeCampaignReminder();
   else if(action==='quit')finish(state.game?.mode==='battle'?'battle':state.game?.mode==='cards'?'cards':state.game?.mode==='infiltrator'?'infiltrator':'quiz');
   else if(action==='start-game')startGame();
   else if(action==='players-down'){state.players=Math.max(3,state.players-1);renderSetupPanel();}
@@ -402,3 +418,5 @@ document.addEventListener('click',(event)=>{
 document.addEventListener('keydown',(event)=>{if(state.game?.mode!=='cards'||!state.active)return;if(event.key==='ArrowDown'||event.key===' ')cardFeedback(true);if(event.key==='ArrowUp')cardFeedback(false);});
 
 renderCatalog();
+
+$('#campaign-dialog').addEventListener('cancel', (event) => event.preventDefault());
