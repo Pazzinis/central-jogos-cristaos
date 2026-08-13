@@ -5,7 +5,8 @@ const state = {
   game: null, duration: 180, rounds: 10, players: 5, teamA: 'Equipe Luz', teamB: 'Equipe Fé',
   deck: [], index: 0, score: 0, seconds: 0, active: false, locked: false, baseline: null,
   timer: null, countdown: null, jobs: [], answered: false, clueCount: 1, historyKey: '', timerDeadline: 0,
-  teams: [0, 0], currentTeam: 0, playerIndex: 0, infiltratorIndex: 0, secretPair: null, secretVisible: false
+  teams: [0, 0], currentTeam: 0, playerIndex: 0, infiltratorIndex: 0, secretPair: null, secretVisible: false,
+  phase: '', swapUsed: false, revealLevel: 0
 };
 let audioContext;
 
@@ -137,6 +138,8 @@ function renderCatalog() {
 function openSetup(gameId) {
   clearRunning();
   state.game = DATA.games.find((game) => game.id === gameId);
+  if (state.game.mode === 'mimechain' && ![3,5].includes(state.rounds)) state.rounds = 5;
+  if (['quiz','clues','grace','reveal'].includes(state.game.mode) && ![5,10].includes(state.rounds)) state.rounds = 10;
   $('.setup-screen').dataset.mode = state.game.mode;
   $('#setup-icon').textContent = state.game.icon;
   $('#setup-kicker').textContent = state.game.category.toUpperCase();
@@ -157,11 +160,20 @@ function renderSetupPanel() {
     panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>Jogue sozinho ou responda em grupo.</p>
       <div class="choice-list">${[5,10].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 5 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
       ${freshNote()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
-  } else if (state.game.mode === 'battle') {
-    panel.innerHTML = `<h3>Prepare as equipes</h3><p>Serão 10 perguntas, alternando automaticamente.</p>
+  } else if (state.game.mode === 'battle' || state.game.mode === 'versehunt') {
+    panel.innerHTML = `<h3>Prepare as equipes</h3><p>${state.game.mode === 'versehunt' ? 'Serão 10 buscas. Tenham Bíblias físicas por perto.' : 'Serão 10 perguntas, alternando automaticamente.'}</p>
       <div class="field"><label for="team-a">Equipe A</label><input id="team-a" maxlength="20" value="${state.teamA}"></div>
       <div class="field"><label for="team-b">Equipe B</label><input id="team-b" maxlength="20" value="${state.teamB}"></div>
-      ${freshNote()}<button class="primary-button" data-action="start-game">Iniciar batalha <span>⚡</span></button>`;
+      ${freshNote()}<button class="primary-button" data-action="start-game">${state.game.mode === 'versehunt' ? 'Começar a busca' : 'Iniciar batalha'} <span>⚡</span></button>`;
+  } else if (state.game.mode === 'grace' || state.game.mode === 'reveal') {
+    panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>${state.game.mode === 'grace' ? 'Cada pessoa recebe um novo objeto.' : 'Cada imagem vale até 5 pontos.'}</p>
+      <div class="choice-list">${[5,10].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 5 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
+      ${freshNote()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
+  } else if (state.game.mode === 'mimechain') {
+    panel.innerHTML = `<h3>Prepare a fila</h3><p>Escolha quantas pessoas participarão da corrente.</p>
+      <div class="stepper"><button data-action="players-down" aria-label="Diminuir jogadores">−</button><strong><span id="players-count">${state.players}</span> jogadores</strong><button data-action="players-up" aria-label="Aumentar jogadores">+</button></div>
+      <div class="choice-list">${[3,5].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 3 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
+      ${freshNote()}<button class="primary-button" data-action="start-game">Começar a corrente <span>↝</span></button>`;
   } else {
     panel.innerHTML = `<h3>Quantos jogadores?</h3><p>O celular será passado de mão em mão.</p>
       <div class="stepper"><button data-action="players-down" aria-label="Diminuir jogadores">−</button><strong><span id="players-count">${state.players}</span> jogadores</strong><button data-action="players-up" aria-label="Aumentar jogadores">+</button></div>
@@ -170,7 +182,7 @@ function renderSetupPanel() {
 }
 
 function startGame() {
-  if (state.game.mode === 'battle') {
+  if (state.game.mode === 'battle' || state.game.mode === 'versehunt') {
     state.teamA = $('#team-a').value.trim() || 'Equipe Luz'; state.teamB = $('#team-b').value.trim() || 'Equipe Fé';
   }
   prepareDevice();
@@ -179,7 +191,11 @@ function startGame() {
     if (state.game.mode === 'cards') startCards();
     else if (state.game.mode === 'quiz') startQuiz();
     else if (state.game.mode === 'clues') startClues();
-    else startBattle();
+    else if (state.game.mode === 'battle') startBattle();
+    else if (state.game.mode === 'grace') startGrace();
+    else if (state.game.mode === 'versehunt') startVerseHunt();
+    else if (state.game.mode === 'reveal') startImageReveal();
+    else if (state.game.mode === 'mimechain') startMimeChain();
   });
 }
 
@@ -309,6 +325,171 @@ function answerBattle(answerIndex) {
   $('#play-actions').innerHTML='<button class="action-primary" data-action="next-battle">Próxima equipe →</button>';
 }
 
+function startRoundTimer(seconds, onEnd) {
+  clearInterval(state.timer);
+  state.seconds = seconds;
+  state.timerDeadline = Date.now() + seconds * 1000;
+  $('#timer').textContent = formatTime(seconds);
+  state.timer = setInterval(() => {
+    const nextSeconds = Math.max(0, Math.ceil((state.timerDeadline - Date.now()) / 1000));
+    if (nextSeconds === state.seconds) return;
+    state.seconds = nextSeconds;
+    $('#timer').textContent = formatTime(nextSeconds);
+    if (nextSeconds <= 5 && nextSeconds > 0) beep(510 + nextSeconds * 35, .04);
+    if (nextSeconds === 0) {
+      clearInterval(state.timer); state.timer = null; beep(260, .14); onEnd?.();
+    }
+  }, 100);
+}
+
+function stopRoundTimer(label = '—') {
+  clearInterval(state.timer); state.timer = null; $('#timer').textContent = label;
+}
+
+function startGrace() {
+  state.historyKey = 'grace'; state.deck = freshDeck(DATA.graceObjects, state.historyKey); state.index = 0;
+  state.score = 0; state.active = true; state.swapUsed = false; configurePlay(); renderGraceRound();
+}
+
+function renderGraceRound() {
+  if (state.index >= state.rounds) { finish('grace'); return; }
+  state.phase = 'thinking'; const object = state.deck[state.index]; rememberItem(state.historyKey, object);
+  $('#turn-label').textContent = `RODADA ${state.index + 1} DE ${state.rounds}`; $('#score').textContent = state.score; $('#score-label').textContent = 'PONTOS';
+  $('#play-stage').innerHTML = `<div class="stage-inner"><p class="stage-kicker" id="grace-status">30 SEGUNDOS PARA PENSAR</p><div class="object-card"><small>SEU OBJETO É</small><h2>${object}</h2><p>Crie uma ilustração que conecte este objeto à graça de Jesus.</p></div></div>`;
+  $('#play-actions').innerHTML = `<button class="action-secondary" data-action="swap-grace" ${state.swapUsed ? 'disabled' : ''}>Trocar objeto</button><button class="action-primary" data-action="start-grace-pitch">Apresentar agora →</button>`;
+  startRoundTimer(30, startGracePitch);
+}
+
+function swapGraceObject() {
+  if (state.swapUsed || state.phase !== 'thinking') return;
+  state.swapUsed = true;
+  const nextIndex = Math.min(state.index + 1, state.deck.length - 1);
+  [state.deck[state.index], state.deck[nextIndex]] = [state.deck[nextIndex], state.deck[state.index]];
+  renderGraceRound();
+}
+
+function startGracePitch() {
+  if (state.phase !== 'thinking') return;
+  state.phase = 'pitch'; const object = state.deck[state.index];
+  $('#play-stage').innerHTML = `<div class="stage-inner"><p class="stage-kicker" id="grace-status">AGORA É COM VOCÊ</p><div class="object-card presenting"><small>CONECTE COM A GRAÇA</small><h2>${object}</h2><p>Você tem 1 minuto. O grupo decide se a conexão fez sentido.</p></div></div>`;
+  $('#play-actions').innerHTML = '<button class="action-secondary" data-action="score-grace-no">Não conseguiu</button><button class="action-primary" data-action="score-grace-yes">Conseguiu!</button>';
+  startRoundTimer(60, () => { const status = $('#grace-status'); if (status) status.textContent = 'TEMPO ENCERRADO · O GRUPO DECIDE'; });
+}
+
+function scoreGrace(success) {
+  if (state.phase !== 'pitch') return;
+  stopRoundTimer(); if (success) { state.score += 1; beep(850, .1); } else beep(280, .1);
+  state.index += 1; state.swapUsed = false; renderGraceRound();
+}
+
+function startVerseHunt() {
+  state.historyKey = 'versehunt'; state.deck = freshDeck(DATA.verseHunt, state.historyKey).slice(0, 10);
+  state.index = 0; state.teams = [0, 0]; state.score = 0; state.active = true; configurePlay(); renderVerseHunt();
+}
+
+function renderVerseHunt(revealed = false) {
+  if (state.index >= state.deck.length) { finish('versehunt'); return; }
+  const item = state.deck[state.index]; const names = [state.teamA, state.teamB]; state.answered = revealed;
+  $('#turn-label').textContent = `BUSCA ${state.index + 1} DE ${state.deck.length}`; $('#score-label').textContent = 'PLACAR'; $('#score').textContent = `${state.teams[0]} × ${state.teams[1]}`;
+  $('#play-stage').innerHTML = `<div class="stage-inner"><div class="team-board">${names.map((name,index)=>`<span class="team-pill">${name}<b>${state.teams[index]}</b></span>`).join('')}</div><p class="stage-kicker">${revealed ? 'REFERÊNCIA ENCONTRADA' : 'PROCUREM EM BÍBLIAS FÍSICAS'}</p><h2 class="quiz-question">${revealed ? item.ref : item.clue}</h2>${revealed ? `<div class="verse-note">${item.note}</div>` : '<p class="stage-subtitle" id="hunt-status">A primeira equipe que encontrar deve ler o trecho em voz alta.</p>'}</div>`;
+  if (revealed) {
+    stopRoundTimer(); rememberItem(state.historyKey, item);
+    $('#play-actions').innerHTML = '<button class="action-primary" data-action="next-verse-hunt">Próxima busca →</button>';
+  } else {
+    $('#play-actions').innerHTML = `<button class="action-primary team-a-button" data-action="verse-team-a">${names[0]}</button><button class="action-secondary" data-action="verse-team-none">Ninguém</button><button class="action-primary team-b-button" data-action="verse-team-b">${names[1]}</button>`;
+    startRoundTimer(90, () => { const status = $('#hunt-status'); if (status) status.textContent = 'Tempo encerrado. Marque quem encontrou ou escolha “Ninguém”.'; });
+  }
+}
+
+function awardVerseHunt(teamIndex) {
+  if (state.answered) return;
+  if (teamIndex !== null) { state.teams[teamIndex] += 1; beep(850, .1); } else beep(280, .1);
+  renderVerseHunt(true);
+}
+
+function startImageReveal() {
+  state.historyKey = 'reveal'; state.deck = freshDeck(DATA.revealImages, state.historyKey).slice(0, state.rounds);
+  state.index = 0; state.score = 0; state.active = true; configurePlay(); renderImageReveal();
+}
+
+function revealImageStyle(item, level) {
+  return `--scene-x:${item.x}%;--scene-y:${item.y}%;`;
+}
+
+function renderImageReveal(answerVisible = false) {
+  if (state.index >= state.deck.length) { finish('reveal'); return; }
+  const item = state.deck[state.index]; state.answered = answerVisible;
+  if (!answerVisible) state.revealLevel = 0;
+  const points = 5 - state.revealLevel;
+  $('#turn-label').textContent = `IMAGEM ${state.index + 1} DE ${state.deck.length}`; $('#score-label').textContent = answerVisible ? 'PONTOS' : `TOTAL · VALE ${points}`; $('#score').textContent = state.score;
+  $('#play-stage').innerHTML = `<div class="stage-inner reveal-stage"><p class="stage-kicker">${answerVisible ? 'A HISTÓRIA ERA' : 'QUAL É A HISTÓRIA?'}</p><div class="reveal-frame"><div class="reveal-image level-${answerVisible ? 4 : state.revealLevel}" style="${revealImageStyle(item, state.revealLevel)}"></div></div>${answerVisible ? `<h2 class="reveal-answer">${item.answer}</h2><p class="stage-subtitle">${item.ref}</p>` : '<p class="stage-subtitle">A imagem ficará mais clara a cada 5 segundos.</p>'}</div>`;
+  if (answerVisible) {
+    stopRoundTimer(); rememberItem(state.historyKey, item);
+    $('#play-actions').innerHTML = '<button class="action-primary" data-action="next-image">Próxima imagem →</button>';
+  } else {
+    $('#play-actions').innerHTML = `<button class="action-secondary" data-action="give-up-image">Não sei</button><button class="action-secondary" data-action="reveal-more-image">Mais nítida</button><button class="action-primary" data-action="correct-image">Acertei!</button>`;
+    startImageRevealStep();
+  }
+}
+
+function startImageRevealStep() {
+  if (state.revealLevel >= 4) { stopRoundTimer(); return; }
+  startRoundTimer(5, advanceImageReveal);
+}
+
+function advanceImageReveal() {
+  if (state.answered || state.revealLevel >= 4) return;
+  stopRoundTimer(); state.revealLevel += 1; const image = $('.reveal-image');
+  if (image) image.className = `reveal-image level-${state.revealLevel}`;
+  const points = 5 - state.revealLevel; $('#score-label').textContent = `TOTAL · VALE ${points}`; beep(620, .06);
+  startImageRevealStep();
+}
+
+function answerImageReveal(correct) {
+  if (state.answered) return;
+  stopRoundTimer(); if (correct) { state.score += 5 - state.revealLevel; beep(850, .1); } else beep(280, .1);
+  renderImageReveal(true);
+}
+
+function startMimeChain() {
+  state.historyKey = 'mimechain'; state.deck = freshDeck(DATA.mimeChain, state.historyKey).slice(0, state.rounds);
+  state.index = 0; state.score = 0; state.active = true; configurePlay(); renderMimeChainReady();
+}
+
+function renderMimeChainReady() {
+  if (state.index >= state.deck.length) { finish('mimechain'); return; }
+  state.phase = 'ready'; $('#turn-label').textContent = `RODADA ${state.index + 1} DE ${state.deck.length}`; $('#score-label').textContent = 'PONTOS'; $('#score').textContent = state.score; stopRoundTimer();
+  $('#play-stage').innerHTML = `<div class="secret-card"><p>SOMENTE A PRIMEIRA PESSOA OLHA</p><h2>Jogador 1</h2><p>Os outros ${state.players - 1} jogadores devem ficar de costas.</p><button class="primary-button" data-action="show-mime-chain">Ver a história <span>👁</span></button></div>`;
+  $('#play-actions').innerHTML = '';
+}
+
+function showMimeChainPrompt() {
+  if (state.phase !== 'ready') return;
+  state.phase = 'prompt'; const item = state.deck[state.index]; rememberItem(state.historyKey, item);
+  $('#play-stage').innerHTML = `<div class="secret-card mime-secret"><p>MEMORIZE SEM DEIXAR NINGUÉM VER</p><h2>${item.answer}</h2><p>${item.prompt}</p><button class="primary-button" data-action="hide-mime-chain">Memorizei e escondi <span>→</span></button></div>`;
+}
+
+function hideMimeChainPrompt() {
+  if (state.phase !== 'prompt') return;
+  state.phase = 'chain';
+  $('#play-stage').innerHTML = `<div class="stage-inner"><p class="stage-kicker" id="mime-chain-status">CELULAR DE LADO</p><h2 class="discussion">Passe a mímica<br>até o Jogador ${state.players}.</h2><p class="stage-subtitle">Sem falar, sem voltar e sem repetir. A última pessoa deve dizer o que entendeu.</p></div>`;
+  $('#play-actions').innerHTML = '<button class="action-primary" data-action="reveal-mime-chain">Revelar história original</button>';
+  startRoundTimer(120, () => { const status = $('#mime-chain-status'); if (status) status.textContent = 'TEMPO ENCERRADO · OUÇA A RESPOSTA FINAL'; });
+}
+
+function revealMimeChainAnswer() {
+  if (state.phase !== 'chain') return;
+  state.phase = 'answer'; stopRoundTimer(); const item = state.deck[state.index];
+  $('#play-stage').innerHTML = `<div class="stage-inner"><p class="stage-kicker">A HISTÓRIA ORIGINAL ERA</p><h2 class="quiz-question">${item.answer}</h2><p class="stage-subtitle">${item.prompt}</p></div>`;
+  $('#play-actions').innerHTML = '<button class="action-secondary" data-action="score-mime-no">Ficou diferente</button><button class="action-primary" data-action="score-mime-yes">Chegou na resposta!</button>';
+}
+
+function scoreMimeChain(success) {
+  if (state.phase !== 'answer') return;
+  if (success) { state.score += 1; beep(850, .1); } else beep(280, .1);
+  state.index += 1; renderMimeChainReady();
+}
+
 function startInfiltrator() {
   state.historyKey='infiltrator';state.secretPair=freshDeck(DATA.infiltrator,state.historyKey)[0];rememberItem(state.historyKey,state.secretPair);state.infiltratorIndex=Math.floor(Math.random()*state.players);state.playerIndex=0;state.secretVisible=false;state.active=true;configurePlay();
   $('#score-label').textContent='JOGADORES';$('#score').textContent=state.players;renderSecretPass();
@@ -332,8 +513,11 @@ function revealInfiltrator() {
 function finish(type) {
   const wasActive=state.active;if(!wasActive)return;clearRunning();let final=state.score;let label='PONTOS';let message='Que partida boa!';
   if(type==='infiltrator'){showScreen('home');try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}return;}
-  if(type==='battle'){const names=[state.teamA,state.teamB];final=`${state.teams[0]} × ${state.teams[1]}`;label=`${names[0]} · ${names[1]}`;message=state.teams[0]===state.teams[1]?'Empate! As duas equipes mandaram muito bem.':`${names[state.teams[0]>state.teams[1]?0:1]} venceu a batalha!`;}
+  if(type==='battle'||type==='versehunt'){const names=[state.teamA,state.teamB];final=`${state.teams[0]} × ${state.teams[1]}`;label=`${names[0]} · ${names[1]}`;message=state.teams[0]===state.teams[1]?'Empate! As duas equipes mandaram muito bem.':`${names[state.teams[0]>state.teams[1]?0:1]} venceu ${type==='versehunt'?'a busca':'a batalha'}!`;}
   else if(type==='cards'){label='ACERTOS';message=state.score>=10?'Vocês estão afiados! Que rodada incrível.':state.score>=5?'Mandaram muito bem nessa rodada!':'Boa tentativa! A próxima vai ser ainda melhor.';}
+  else if(type==='grace'){label='CONEXÕES';message=`O grupo aprovou ${state.score} de ${state.rounds} conexões com a graça.`;}
+  else if(type==='mimechain'){label='HISTÓRIAS';message=`A corrente preservou ${state.score} de ${state.deck.length} histórias.`;}
+  else if(type==='reveal'){label='PONTOS';message=`Vocês somaram ${state.score} pontos reconhecendo as imagens.`;}
   else message=`Você acertou ${state.score} de ${state.deck.length}.`;
   $('#final-score').textContent=final;$('#final-label').textContent=label;$('#result-message').textContent=message;showScreen('result');state.jobs.push(setTimeout(openCampaignReminder,650));try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}
 }
@@ -402,7 +586,7 @@ document.addEventListener('click',(event)=>{
   else if(action==='copy-link')copySiteLink();
   else if(action==='share-site')shareSite();
   else if(action==='close-campaign')closeCampaignReminder();
-  else if(action==='quit')finish(state.game?.mode==='battle'?'battle':state.game?.mode==='cards'?'cards':state.game?.mode==='infiltrator'?'infiltrator':'quiz');
+  else if(action==='quit')finish(state.game?.mode || 'quiz');
   else if(action==='start-game')startGame();
   else if(action==='players-down'){state.players=Math.max(3,state.players-1);renderSetupPanel();}
   else if(action==='players-up'){state.players=Math.min(12,state.players+1);renderSetupPanel();}
@@ -415,6 +599,23 @@ document.addEventListener('click',(event)=>{
   else if(action==='give-up-clue')renderClue(true);
   else if(action==='next-clue-card'){state.index+=1;state.clueCount=1;renderClue();}
   else if(action==='next-battle'){state.index+=1;state.currentTeam=1-state.currentTeam;renderBattle();}
+  else if(action==='swap-grace')swapGraceObject();
+  else if(action==='start-grace-pitch')startGracePitch();
+  else if(action==='score-grace-yes')scoreGrace(true);
+  else if(action==='score-grace-no')scoreGrace(false);
+  else if(action==='verse-team-a')awardVerseHunt(0);
+  else if(action==='verse-team-b')awardVerseHunt(1);
+  else if(action==='verse-team-none')awardVerseHunt(null);
+  else if(action==='next-verse-hunt'){state.index+=1;renderVerseHunt();}
+  else if(action==='reveal-more-image')advanceImageReveal();
+  else if(action==='correct-image')answerImageReveal(true);
+  else if(action==='give-up-image')answerImageReveal(false);
+  else if(action==='next-image'){state.index+=1;renderImageReveal();}
+  else if(action==='show-mime-chain')showMimeChainPrompt();
+  else if(action==='hide-mime-chain')hideMimeChainPrompt();
+  else if(action==='reveal-mime-chain')revealMimeChainAnswer();
+  else if(action==='score-mime-yes')scoreMimeChain(true);
+  else if(action==='score-mime-no')scoreMimeChain(false);
   else if(action==='reveal-secret'){state.secretVisible=true;renderSecretPass();}
   else if(action==='hide-secret'){state.secretVisible=false;state.playerIndex+=1;if(state.playerIndex>=state.players)finishSecretDistribution();else renderSecretPass();}
   else if(action==='reveal-infiltrator')revealInfiltrator();
