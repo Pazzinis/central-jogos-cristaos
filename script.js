@@ -1,33 +1,17 @@
-const characters = {
-  easy: [['Jesus','Filho de Deus'],['Maria','Mãe de Jesus'],['Noé','Construiu uma arca'],['Moisés','Abriu o Mar Vermelho'],['Davi','Derrotou um gigante'],['Adão','Primeiro homem'],['Eva','Primeira mulher'],['José','Tinha uma túnica colorida'],['Sansão','Sua força estava nos cabelos'],['Jonas','Foi engolido por um grande peixe'],['Pedro','Pescador e discípulo'],['Abraão','Pai de muitas nações'],['Daniel','Sobreviveu à cova dos leões'],['Golias','Gigante filisteu'],['Salomão','Rei conhecido pela sabedoria'],['Lázaro','Foi ressuscitado por Jesus'],['João Batista','Batizou Jesus'],['Zaqueu','Subiu em uma árvore']],
-  medium: [['Ester','Rainha que salvou seu povo'],['Rute','Companheira fiel de Noemi'],['Gideão','Venceu com apenas 300 homens'],['Débora','Juíza e profetisa'],['Samuel','Ouviu Deus ainda menino'],['Isaque','Filho da promessa'],['Jacó','Teve doze filhos'],['Paulo','Apóstolo dos gentios'],['Timóteo','Jovem discípulo de Paulo'],['Marta','Irmã de Maria e Lázaro'],['Madalena','Primeira a ver Jesus ressuscitado'],['Neemias','Reconstruiu os muros de Jerusalém'],['Elias','Profeta levado num redemoinho'],['Eliseu','Sucessor de Elias'],['Josué','Liderou a conquista de Jericó'],['João','Discípulo amado'],['Tomé','Quis ver para crer'],['Mateus','Cobrador de impostos e discípulo']],
-  hard: [['Mefibosete','Neto de Saul acolhido por Davi'],['Balaão','Sua jumenta falou'],['Melquisedeque','Rei de Salém e sacerdote'],['Hulda','Profetisa consultada por Josias'],['Eúde','Juiz canhoto de Israel'],['Benaia','Valente guerreiro de Davi'],['Onésimo','Escravo mencionado por Paulo'],['Priscila','Ensinou Apolo com seu marido'],['Epafrodito','Companheiro de Paulo em Filipos'],['Zorobabel','Liderou o retorno do exílio'],['Bartimeu','Cego curado perto de Jericó'],['Jael','Derrotou Sísera'],['Abisague','Cuidou do rei Davi idoso'],['Tíquico','Mensageiro fiel de Paulo'],['Quedorlaomer','Rei combatido por Abraão'],['Eutique','Caiu da janela durante uma pregação'],['Nabote','Dono de uma vinha desejada por Acabe'],['Aitofel','Conselheiro que traiu Davi']]
-};
-
-const levels = {
-  easy: { name: 'Fácil', duration: 180, label: '3 minutos' },
-  medium: { name: 'Médio', duration: 120, label: '2 minutos' },
-  hard: { name: 'Difícil', duration: 60, label: '1 minuto' }
-};
-
-const screens = [...document.querySelectorAll('.screen')];
+const DATA = window.MONTE_DATA;
 const $ = (selector) => document.querySelector(selector);
-let level = 'easy';
-let deck = [];
-let cardIndex = 0;
-let score = 0;
-let seconds = levels.easy.duration;
-let timerId;
-let countdownId;
-let transitionIds = [];
-let gameActive = false;
-let tiltLocked = false;
-let baseline = null;
+const screens = [...document.querySelectorAll('.screen')];
+const state = {
+  game: null, duration: 180, rounds: 10, players: 5, teamA: 'Equipe Luz', teamB: 'Equipe Fé',
+  deck: [], index: 0, score: 0, seconds: 0, active: false, locked: false, baseline: null,
+  timer: null, countdown: null, jobs: [], answered: false, clueCount: 1,
+  teams: [0, 0], currentTeam: 0, playerIndex: 0, infiltratorIndex: 0, secretPair: null, secretVisible: false
+};
 let audioContext;
 
 function showScreen(name) {
   screens.forEach((screen) => screen.classList.toggle('active', screen.dataset.screen === name));
-  window.scrollTo(0, 1);
+  window.scrollTo(0, 0);
 }
 
 function shuffle(items) {
@@ -39,12 +23,7 @@ function shuffle(items) {
   return result;
 }
 
-function formatTime(value) {
-  const minutes = Math.floor(value / 60);
-  return `${minutes}:${String(value % 60).padStart(2, '0')}`;
-}
-
-function beep(frequency = 620, duration = .09, delay = 0) {
+function beep(frequency = 620, duration = .08, delay = 0) {
   try {
     const Audio = window.AudioContext || window.webkitAudioContext;
     audioContext ||= new Audio();
@@ -53,204 +32,272 @@ function beep(frequency = 620, duration = .09, delay = 0) {
     const start = audioContext.currentTime + delay;
     oscillator.frequency.value = frequency;
     gain.gain.setValueAtTime(.001, start);
-    gain.gain.exponentialRampToValueAtTime(.12, start + .01);
+    gain.gain.exponentialRampToValueAtTime(.11, start + .01);
     gain.gain.exponentialRampToValueAtTime(.001, start + duration);
     oscillator.connect(gain).connect(audioContext.destination);
-    oscillator.start(start);
-    oscillator.stop(start + duration + .02);
+    oscillator.start(start); oscillator.stop(start + duration + .02);
   } catch (_) {}
+}
+
+function formatTime(value) {
+  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
 }
 
 async function prepareDevice() {
-  try {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-    }
-  } catch (_) {}
+  try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen({navigationUI:'hide'}); } catch (_) {}
   try {
     const Audio = window.AudioContext || window.webkitAudioContext;
-    audioContext ||= new Audio();
-    await audioContext.resume();
-    if (typeof window.DeviceOrientationEvent?.requestPermission === 'function') {
-      await window.DeviceOrientationEvent.requestPermission();
-    }
-    await screen.orientation?.lock?.('landscape');
+    audioContext ||= new Audio(); await audioContext.resume();
+    if (state.game?.id === 'who' && typeof window.DeviceOrientationEvent?.requestPermission === 'function') await window.DeviceOrientationEvent.requestPermission();
+    if (state.game?.landscape) await screen.orientation?.lock?.('landscape');
   } catch (_) {}
 }
 
-function clearTransitions() {
-  transitionIds.forEach((id) => clearTimeout(id));
-  transitionIds = [];
-  $('#next-overlay').classList.remove('show');
-  $('#roulette-overlay').classList.remove('show');
+function clearRunning() {
+  state.active = false;
+  clearInterval(state.timer); clearInterval(state.countdown);
+  state.jobs.forEach((job) => { clearTimeout(job); clearInterval(job); }); state.jobs = [];
+  $('#feedback-overlay').className = 'feedback-overlay';
+  $('#transition-overlay').className = 'transition-overlay';
 }
 
-function startCountdown() {
+function renderCatalog() {
+  $('#game-grid').innerHTML = DATA.games.map((game, index) => `
+    <button class="catalog-card ${index === 0 ? 'featured' : ''}" data-game="${game.id}" data-accent="${game.accent}" aria-label="Jogar ${game.title}">
+      <span class="card-meta"><b>JOGO ${game.number}</b><span>${game.category}</span></span>
+      <span class="catalog-icon" aria-hidden="true">${game.icon}</span>
+      <h3>${game.title}</h3><p>${game.description}</p><span class="card-arrow">→</span>
+    </button>`).join('');
+}
+
+function openSetup(gameId) {
+  clearRunning();
+  state.game = DATA.games.find((game) => game.id === gameId);
+  $('#setup-icon').textContent = state.game.icon;
+  $('#setup-kicker').textContent = `JOGO ${state.game.number} · ${state.game.category}`;
+  $('#setup-title').textContent = state.game.title;
+  $('#setup-description').textContent = state.game.description;
+  $('#setup-rules').textContent = state.game.rules;
+  renderSetupPanel(); showScreen('setup');
+}
+
+function renderSetupPanel() {
+  const panel = $('#setup-panel');
+  if (state.game.mode === 'cards') {
+    panel.innerHTML = `<h3>Escolha o ritmo</h3><p>O conteúdo é o mesmo; muda apenas o tempo da rodada.</p>
+      <div class="choice-list">
+        ${[[180,'Relaxado','3 minutos'],[120,'Normal','2 minutos'],[60,'Relâmpago','1 minuto']].map(([value,title,label]) => `<button class="choice-button ${state.duration === value ? 'selected' : ''}" data-duration="${value}"><span><strong>${title}</strong><small>${label}</small></span><b>${label}</b></button>`).join('')}
+      </div><button class="primary-button" data-action="start-game">Começar em tela cheia <span>→</span></button>`;
+  } else if (state.game.mode === 'quiz' || state.game.mode === 'clues') {
+    panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>Jogue sozinho ou responda em grupo.</p>
+      <div class="choice-list">${[5,10].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 5 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
+      <button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
+  } else if (state.game.mode === 'battle') {
+    panel.innerHTML = `<h3>Prepare as equipes</h3><p>Serão 10 perguntas, alternando automaticamente.</p>
+      <div class="field"><label for="team-a">Equipe A</label><input id="team-a" maxlength="20" value="${state.teamA}"></div>
+      <div class="field"><label for="team-b">Equipe B</label><input id="team-b" maxlength="20" value="${state.teamB}"></div>
+      <button class="primary-button" data-action="start-game">Iniciar batalha <span>⚡</span></button>`;
+  } else {
+    panel.innerHTML = `<h3>Quantos jogadores?</h3><p>O celular será passado de mão em mão.</p>
+      <div class="stepper"><button data-action="players-down" aria-label="Diminuir jogadores">−</button><strong><span id="players-count">${state.players}</span> jogadores</strong><button data-action="players-up" aria-label="Aumentar jogadores">+</button></div>
+      <button class="primary-button" data-action="start-game">Distribuir palavras <span>◉</span></button>`;
+  }
+}
+
+function startGame() {
+  if (state.game.mode === 'battle') {
+    state.teamA = $('#team-a').value.trim() || 'Equipe Luz'; state.teamB = $('#team-b').value.trim() || 'Equipe Fé';
+  }
   prepareDevice();
-  let count = 5;
-  $('#countdown-number').textContent = count;
-  showScreen('countdown');
-  beep(560);
-  clearInterval(countdownId);
-  countdownId = setInterval(() => {
-    count -= 1;
-    if (count > 0) {
-      $('#countdown-number').textContent = count;
-      beep(560 + count * 25);
-    } else {
-      clearInterval(countdownId);
-      beep(880, .18);
-      beginGame();
-    }
+  if (state.game.mode === 'infiltrator') { startInfiltrator(); return; }
+  startCountdown(state.game.mode === 'cards' ? 5 : 3, () => {
+    if (state.game.mode === 'cards') startCards();
+    else if (state.game.mode === 'quiz') startQuiz();
+    else if (state.game.mode === 'clues') startClues();
+    else startBattle();
+  });
+}
+
+function startCountdown(from, done) {
+  showScreen('countdown'); $('#countdown-label').textContent = 'PREPARE-SE'; $('#countdown-number').textContent = from; beep(560);
+  let value = from;
+  state.countdown = setInterval(() => {
+    value -= 1;
+    if (value > 0) { $('#countdown-number').textContent = value; beep(580 + value * 25); }
+    else { clearInterval(state.countdown); beep(880,.16); done(); }
   }, 1000);
 }
 
-function beginGame() {
-  deck = shuffle(characters[level]);
-  cardIndex = 0;
-  score = 0;
-  seconds = levels[level].duration;
-  baseline = null;
-  gameActive = true;
-  tiltLocked = true;
-  $('#score').textContent = '0';
-  $('#timer').textContent = formatTime(seconds);
-  showScreen('game');
-  clearInterval(timerId);
-  timerId = setInterval(() => {
-    seconds -= 1;
-    $('#timer').textContent = formatTime(Math.max(seconds, 0));
-    if (seconds <= 10 && seconds > 0) beep(500, .05);
-    if (seconds <= 0) finishGame();
+function configurePlay() {
+  showScreen('play'); $('#play-label').textContent = state.game.title.toUpperCase(); $('#turn-label').textContent = '';
+  $('#score-label').textContent = 'PONTOS'; $('#score').textContent = state.score; $('#timer').textContent = '—';
+  $('#play-actions').innerHTML = ''; $('#play-stage').innerHTML = '';
+  $('.play-screen').classList.toggle('require-landscape', Boolean(state.game.landscape));
+}
+
+function cardSource() {
+  if (state.game.id === 'who') return DATA.commonCharacters;
+  if (state.game.id === 'mime') return DATA.mime;
+  if (state.game.id === 'draw') return DATA.draw;
+  if (state.game.id === 'taboo') return DATA.taboo;
+  return DATA.emoji;
+}
+
+function startCards() {
+  state.deck = shuffle(cardSource()); state.index = 0; state.score = 0; state.seconds = state.duration; state.active = true; state.locked = true;
+  configurePlay(); $('#score-label').textContent = 'ACERTOS'; $('#timer').textContent = formatTime(state.seconds);
+  state.timer = setInterval(() => {
+    state.seconds -= 1; $('#timer').textContent = formatTime(Math.max(0,state.seconds));
+    if (state.seconds <= 10 && state.seconds > 0) beep(480,.04);
+    if (state.seconds <= 0) finish('cards');
   }, 1000);
   runRoulette();
 }
 
+function cardTitle(card) { return state.game.id === 'taboo' ? card.word : card[0]; }
+
 function renderCard() {
-  if (cardIndex >= deck.length) deck = shuffle(characters[level]);
-  const [name, hint] = deck[cardIndex];
-  $('#character-name').textContent = name;
-  $('#character-hint').textContent = hint;
+  if (state.index >= state.deck.length) { state.deck = shuffle(cardSource()); state.index = 0; }
+  const card = state.deck[state.index];
+  let content = '';
+  if (state.game.id === 'taboo') content = `<p class="stage-kicker">FAÇA ADIVINHAR</p><h2 class="stage-title">${card.word}</h2><p class="stage-subtitle">Não pode falar:</p><div class="forbidden">${card.forbidden.map((word) => `<span>${word}</span>`).join('')}</div>`;
+  else if (state.game.id === 'emoji') content = `<p class="stage-kicker">QUAL É A HISTÓRIA?</p><h2 class="emoji-title">${card[0]}</h2><p class="stage-subtitle" id="emoji-answer">Toque em “Mostrar resposta” se precisar</p>`;
+  else content = `<p class="stage-kicker">${state.game.id === 'who' ? 'QUEM SOU EU?' : state.game.title.toUpperCase()}</p><h2 class="stage-title">${card[0]}</h2><p class="stage-subtitle">${card[1]}</p>`;
+  $('#play-stage').innerHTML = `<div class="stage-inner">${content}</div>`;
+  const reveal = state.game.id === 'emoji' ? `<button class="action-secondary" data-action="reveal-emoji">Mostrar resposta</button>` : '';
+  $('#play-actions').innerHTML = `<button class="action-secondary" data-action="card-pass">↑ PULAR</button>${reveal}<button class="action-primary" data-action="card-correct">ACERTEI ↓</button>`;
 }
 
 function runRoulette() {
-  if (!gameActive) return;
-  const overlay = $('#roulette-overlay');
-  const rouletteName = $('#roulette-name');
-  overlay.classList.add('show');
-  let spins = 0;
-  const rouletteTimer = setInterval(() => {
-    const choices = characters[level];
-    rouletteName.textContent = choices[Math.floor(Math.random() * choices.length)][0];
-    beep(430 + spins * 18, .025);
-    spins += 1;
-    if (spins >= 12) {
-      clearInterval(rouletteTimer);
-      renderCard();
-      rouletteName.textContent = deck[cardIndex][0];
-      transitionIds.push(setTimeout(() => {
-        overlay.classList.remove('show');
-        tiltLocked = false;
-        baseline = null;
-        beep(820, .1);
-      }, 420));
-    }
-  }, 75);
-  transitionIds.push(rouletteTimer);
+  if (!state.active) return;
+  state.locked = true; const overlay = $('#transition-overlay'); const value = $('#transition-value');
+  overlay.className = 'transition-overlay roulette show'; $('#transition-label').textContent = 'SORTEANDO...';
+  let spins = 0; const source = cardSource();
+  const job = setInterval(() => {
+    value.textContent = cardTitle(source[Math.floor(Math.random()*source.length)]); beep(420+spins*12,.025); spins += 1;
+    if (spins >= 11) { clearInterval(job); renderCard(); value.textContent = cardTitle(state.deck[state.index]); state.jobs.push(setTimeout(() => { overlay.className='transition-overlay'; state.locked=false; state.baseline=null; beep(820,.08); },380)); }
+  },70); state.jobs.push(job);
+}
+
+function cardFeedback(correct) {
+  if (!state.active || state.locked) return; state.locked = true;
+  if (correct) { state.score += 1; $('#score').textContent = state.score; beep(760,.08); beep(980,.12,.07); }
+  else beep(260,.1);
+  const overlay = $('#feedback-overlay'); overlay.textContent = correct ? 'ACERTOU!' : 'PULOU!'; overlay.className = `feedback-overlay show ${correct?'':'pass'}`;
+  state.jobs.push(setTimeout(() => { overlay.className='feedback-overlay'; nextCardCountdown(); },550));
 }
 
 function nextCardCountdown() {
-  const overlay = $('#next-overlay');
-  const count = $('#next-count');
-  overlay.classList.add('show');
-  let value = 3;
-  count.textContent = value;
-  beep(530, .06);
-  const tick = () => {
-    value -= 1;
-    if (value > 0) {
-      count.textContent = value;
-      beep(530 + value * 40, .06);
-      transitionIds.push(setTimeout(tick, 1000));
-    } else {
-      overlay.classList.remove('show');
-      cardIndex += 1;
-      runRoulette();
-    }
-  };
-  transitionIds.push(setTimeout(tick, 1000));
+  const overlay=$('#transition-overlay'); const value=$('#transition-value'); overlay.className='transition-overlay show'; $('#transition-label').textContent='PRÓXIMO EM'; let count=3; value.textContent=count;
+  const tick=()=>{count-=1;if(count>0){value.textContent=count;beep(540+count*30,.05);state.jobs.push(setTimeout(tick,1000));}else{overlay.className='transition-overlay';state.index+=1;runRoulette();}};
+  beep(540,.05); state.jobs.push(setTimeout(tick,1000));
 }
 
-function feedback(type) {
-  if (!gameActive || tiltLocked) return;
-  tiltLocked = true;
-  if (type === 'correct') {
-    score += 1;
-    $('#score').textContent = score;
-    beep(740, .08);
-    beep(980, .14, .08);
-  } else {
-    beep(260, .12);
-  }
-  const panel = $('#tilt-feedback');
-  panel.textContent = type === 'correct' ? 'ACERTOU!' : 'PULOU!';
-  panel.className = `tilt-feedback show ${type}`;
-  transitionIds.push(setTimeout(() => {
-    panel.className = 'tilt-feedback';
-    nextCardCountdown();
-  }, 650));
+function startQuiz() {
+  state.deck=shuffle(DATA.quizzes[state.game.id]).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;configurePlay();renderQuestion();
 }
 
-function finishGame() {
-  if (!gameActive) return;
-  gameActive = false;
-  tiltLocked = true;
-  clearInterval(timerId);
-  clearTransitions();
-  beep(520, .12); beep(660, .12, .14); beep(840, .24, .28);
-  $('#final-score').textContent = score;
-  $('#result-message').textContent = score >= 10 ? 'Vocês conhecem muito! Que partida incrível.' : score >= 5 ? 'Vocês fizeram uma ótima partida!' : 'Boa tentativa! Que tal mais uma rodada?';
-  showScreen('result');
-  try { if (document.fullscreenElement) document.exitFullscreen(); } catch (_) {}
+function renderQuestion() {
+  if(state.index>=state.deck.length){finish('quiz');return;} state.answered=false;const item=state.deck[state.index];
+  $('#turn-label').textContent=`PERGUNTA ${state.index+1} DE ${state.deck.length}`;$('#score').textContent=state.score;
+  $('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">ESCOLHA UMA RESPOSTA</p><h2 class="quiz-question">${item.q}</h2><div class="options">${item.options.map((option,index)=>`<button class="option" data-answer="${index}">${option}</button>`).join('')}</div><div class="explanation" id="explanation">${item.explanation}</div></div>`;
+  $('#play-actions').innerHTML='';
 }
 
-function orientationAxis(event) {
-  const angle = screen.orientation?.angle ?? window.orientation ?? 0;
-  return Math.abs(angle) === 90 ? (angle === 90 ? -event.gamma : event.gamma) : event.beta;
+function answerQuestion(answerIndex) {
+  if(state.answered)return;state.answered=true;const item=state.deck[state.index];const correct=answerIndex===item.answer;
+  document.querySelectorAll('.option').forEach((button,index)=>{button.disabled=true;if(index===item.answer)button.classList.add('correct');else if(index===answerIndex)button.classList.add('wrong');});
+  $('#explanation').classList.add('show');if(correct){state.score+=1;$('#score').textContent=state.score;beep(850,.1);}else beep(260,.12);
+  $('#play-actions').innerHTML=`<button class="action-primary" data-action="next-question">${state.index+1===state.deck.length?'Ver resultado':'Próxima pergunta'} →</button>`;
 }
 
-window.addEventListener('deviceorientation', (event) => {
-  if (!gameActive || tiltLocked || event.beta == null || event.gamma == null) return;
-  const value = orientationAxis(event);
-  if (baseline == null) { baseline = value; return; }
-  const delta = value - baseline;
-  if (delta > 30) feedback('correct');
-  else if (delta < -30) feedback('pass');
-  else baseline = baseline * .98 + value * .02;
-}, true);
+function startClues() {
+  state.deck=shuffle(DATA.clues).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;state.clueCount=1;configurePlay();renderClue();
+}
 
-document.addEventListener('click', (event) => {
-  const target = event.target.closest('[data-action],[data-level]');
-  if (!target) return;
-  if (target.dataset.level) {
-    level = target.dataset.level;
-    const config = levels[level];
-    $('#chosen-level').textContent = `${config.name} · ${config.label}`;
-    showScreen('ready');
-    return;
-  }
-  const action = target.dataset.action;
-  if (action === 'levels') showScreen('levels');
-  if (action === 'home') showScreen('home');
-  if (action === 'start' || action === 'replay') startCountdown();
-  if (action === 'correct') feedback('correct');
-  if (action === 'pass') feedback('pass');
-  if (action === 'quit') finishGame();
+function renderClue(revealAnswer=false) {
+  if(state.index>=state.deck.length){finish('clues');return;}const item=state.deck[state.index];$('#turn-label').textContent=`RODADA ${state.index+1} DE ${state.deck.length}`;$('#score').textContent=state.score;
+  $('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">VALENDO ${6-state.clueCount} ${6-state.clueCount===1?'PONTO':'PONTOS'}</p><h2 class="quiz-question">Quem é o personagem?</h2><div class="clue-list">${item.clues.slice(0,state.clueCount).map((clue,index)=>`<div class="clue"><b>${index+1}</b>${clue}</div>`).join('')}</div>${revealAnswer?`<div class="answer-reveal">${item.answer}</div>`:''}</div>`;
+  if(revealAnswer)$('#play-actions').innerHTML='<button class="action-primary" data-action="next-clue-card">Próximo personagem →</button>';
+  else $('#play-actions').innerHTML=`<button class="action-secondary" data-action="more-clue" ${state.clueCount===5?'disabled':''}>+ Outra pista</button><button class="action-secondary" data-action="give-up-clue">Não sei</button><button class="action-primary" data-action="got-clue">Acertei!</button>`;
+}
+
+function startBattle() {
+  const pool=[...DATA.quizzes.truth,...DATA.quizzes.quote,...DATA.quizzes.verse];state.deck=shuffle(pool).slice(0,10);state.index=0;state.teams=[0,0];state.currentTeam=0;state.active=true;configurePlay();$('#score-label').textContent='RODADA';renderBattle();
+}
+
+function renderBattle() {
+  if(state.index>=state.deck.length){finish('battle');return;}state.answered=false;const item=state.deck[state.index];const names=[state.teamA,state.teamB];$('#score').textContent=`${state.index+1}/10`;$('#turn-label').textContent=`VEZ DE ${names[state.currentTeam].toUpperCase()}`;
+  $('#play-stage').innerHTML=`<div class="stage-inner"><div class="team-board">${names.map((name,index)=>`<span class="team-pill ${index===state.currentTeam?'active':''}">${name}<b>${state.teams[index]}</b></span>`).join('')}</div><h2 class="quiz-question">${item.q}</h2><div class="options">${item.options.map((option,index)=>`<button class="option" data-battle-answer="${index}">${option}</button>`).join('')}</div><div class="explanation" id="explanation">${item.explanation}</div></div>`;$('#play-actions').innerHTML='';
+}
+
+function answerBattle(answerIndex) {
+  if(state.answered)return;state.answered=true;const item=state.deck[state.index];const correct=answerIndex===item.answer;if(correct)state.teams[state.currentTeam]+=1;
+  document.querySelectorAll('.option').forEach((button,index)=>{button.disabled=true;if(index===item.answer)button.classList.add('correct');else if(index===answerIndex)button.classList.add('wrong');});$('#explanation').classList.add('show');beep(correct?850:260,.1);
+  $('#play-actions').innerHTML='<button class="action-primary" data-action="next-battle">Próxima equipe →</button>';
+}
+
+function startInfiltrator() {
+  state.secretPair=DATA.infiltrator[Math.floor(Math.random()*DATA.infiltrator.length)];state.infiltratorIndex=Math.floor(Math.random()*state.players);state.playerIndex=0;state.secretVisible=false;state.active=true;configurePlay();
+  $('#score-label').textContent='JOGADORES';$('#score').textContent=state.players;renderSecretPass();
+}
+
+function renderSecretPass() {
+  const number=state.playerIndex+1;$('#turn-label').textContent=`JOGADOR ${number} DE ${state.players}`;$('#timer').textContent='—';
+  if(!state.secretVisible){$('#play-stage').innerHTML=`<div class="secret-card"><p>ENTREGUE O CELULAR AO</p><h2>Jogador ${number}</h2><p>Quando ninguém estiver olhando, revele sua palavra.</p><button class="primary-button" data-action="reveal-secret">Ver minha palavra <span>👁</span></button></div>`;}
+  else{const word=state.playerIndex===state.infiltratorIndex?state.secretPair[1]:state.secretPair[0];$('#play-stage').innerHTML=`<div class="secret-card"><p>SUA PALAVRA SECRETA É</p><h2>${word}</h2><p>Guarde na memória e não deixe ninguém ver.</p><button class="primary-button" data-action="hide-secret">Esconder e passar <span>→</span></button></div>`;}$('#play-actions').innerHTML='';
+}
+
+function finishSecretDistribution() {
+  $('#turn-label').textContent='HORA DAS PISTAS';$('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">TODOS VIRAM A PALAVRA</p><h2 class="discussion">Dê uma pista.<br>Encontre o infiltrado.</h2><p class="stage-subtitle">Depois que todos falarem, façam a votação.</p></div>`;$('#play-actions').innerHTML='<button class="action-primary" data-action="reveal-infiltrator">Revelar o infiltrado</button>';
+}
+
+function revealInfiltrator() {
+  $('#play-stage').innerHTML=`<div class="stage-inner"><p class="stage-kicker">O INFILTRADO ERA</p><h2 class="stage-title">Jogador ${state.infiltratorIndex+1}</h2><p class="stage-subtitle">Grupo: <b>${state.secretPair[0]}</b> · Infiltrado: <b>${state.secretPair[1]}</b></p></div>`;$('#play-actions').innerHTML='<button class="action-primary" data-action="replay">Jogar novamente ↻</button><button class="action-secondary" data-action="home">Voltar à central</button>';beep(620,.12);beep(850,.2,.13);
+}
+
+function finish(type) {
+  const wasActive=state.active;if(!wasActive)return;clearRunning();let final=state.score;let label='PONTOS';let message='Que partida boa!';
+  if(type==='infiltrator'){showScreen('home');try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}return;}
+  if(type==='battle'){const names=[state.teamA,state.teamB];final=`${state.teams[0]} × ${state.teams[1]}`;label=`${names[0]} · ${names[1]}`;message=state.teams[0]===state.teams[1]?'Empate! As duas equipes mandaram muito bem.':`${names[state.teams[0]>state.teams[1]?0:1]} venceu a batalha!`;}
+  else if(type==='cards'){label='ACERTOS';message=state.score>=10?'Vocês estão afiados! Que rodada incrível.':state.score>=5?'Mandaram muito bem nessa rodada!':'Boa tentativa! A próxima vai ser ainda melhor.';}
+  else message=`Você acertou ${state.score} de ${state.deck.length}.`;
+  $('#final-score').textContent=final;$('#final-label').textContent=label;$('#result-message').textContent=message;showScreen('result');try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}
+}
+
+window.addEventListener('deviceorientation',(event)=>{
+  if(state.game?.id!=='who'||!state.active||state.locked||event.beta==null||event.gamma==null)return;const angle=screen.orientation?.angle??window.orientation??0;const value=Math.abs(angle)===90?(angle===90?-event.gamma:event.gamma):event.beta;
+  if(state.baseline==null){state.baseline=value;return;}const delta=value-state.baseline;if(delta>30)cardFeedback(true);else if(delta<-30)cardFeedback(false);else state.baseline=state.baseline*.98+value*.02;
+},true);
+
+document.addEventListener('click',(event)=>{
+  const target=event.target.closest('[data-action],[data-game],[data-duration],[data-rounds],[data-answer],[data-battle-answer]');if(!target)return;
+  if(target.dataset.game){openSetup(target.dataset.game);return;}
+  if(target.dataset.duration){state.duration=Number(target.dataset.duration);renderSetupPanel();return;}
+  if(target.dataset.rounds){state.rounds=Number(target.dataset.rounds);renderSetupPanel();return;}
+  if(target.dataset.answer!==undefined){answerQuestion(Number(target.dataset.answer));return;}
+  if(target.dataset.battleAnswer!==undefined){answerBattle(Number(target.dataset.battleAnswer));return;}
+  const action=target.dataset.action;
+  if(action==='home'){clearRunning();showScreen('home');}
+  else if(action==='quit')finish(state.game?.mode==='battle'?'battle':state.game?.mode==='cards'?'cards':state.game?.mode==='infiltrator'?'infiltrator':'quiz');
+  else if(action==='start-game')startGame();
+  else if(action==='players-down'){state.players=Math.max(3,state.players-1);renderSetupPanel();}
+  else if(action==='players-up'){state.players=Math.min(12,state.players+1);renderSetupPanel();}
+  else if(action==='card-correct')cardFeedback(true);
+  else if(action==='card-pass')cardFeedback(false);
+  else if(action==='reveal-emoji'){$('#emoji-answer').textContent=state.deck[state.index][1];beep(700,.06);}
+  else if(action==='next-question'){state.index+=1;renderQuestion();}
+  else if(action==='more-clue'){if(state.clueCount<5){state.clueCount+=1;renderClue();}}
+  else if(action==='got-clue'){state.score+=6-state.clueCount;renderClue(true);beep(850,.1);}
+  else if(action==='give-up-clue')renderClue(true);
+  else if(action==='next-clue-card'){state.index+=1;state.clueCount=1;renderClue();}
+  else if(action==='next-battle'){state.index+=1;state.currentTeam=1-state.currentTeam;renderBattle();}
+  else if(action==='reveal-secret'){state.secretVisible=true;renderSecretPass();}
+  else if(action==='hide-secret'){state.secretVisible=false;state.playerIndex+=1;if(state.playerIndex>=state.players)finishSecretDistribution();else renderSecretPass();}
+  else if(action==='reveal-infiltrator')revealInfiltrator();
+  else if(action==='replay')openSetup(state.game.id);
 });
 
-document.addEventListener('keydown', (event) => {
-  if (!gameActive) return;
-  if (event.key === 'ArrowDown' || event.key === ' ') feedback('correct');
-  if (event.key === 'ArrowUp') feedback('pass');
-  if (event.key === 'Escape') finishGame();
-});
+document.addEventListener('keydown',(event)=>{if(state.game?.mode!=='cards'||!state.active)return;if(event.key==='ArrowDown'||event.key===' ')cardFeedback(true);if(event.key==='ArrowUp')cardFeedback(false);});
+
+renderCatalog();
