@@ -1,9 +1,16 @@
-(() => {
+(async () => {
   const params = new URLSearchParams(location.search);
-  const enabled = ['localhost', '127.0.0.1'].includes(location.hostname) || params.get('salas') === 'teste';
-  if (!enabled) return;
-
-  const service = window.JDRRoomServices?.local;
+  const onLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
+  const useLocalService = params.get('salas') === 'local' || (onLocalhost && params.get('salas') !== 'firebase');
+  const service = useLocalService
+    ? window.JDRRoomServices?.local
+    : (await import('./firebase-room-service.js')).firebaseRoomService;
+  const DATA = window.MONTE_DATA;
+  try { await service.ready?.(); }
+  catch (error) {
+    console.error('Não foi possível iniciar as salas:', error);
+    return;
+  }
   const nicknameKey = 'jdr-player-name-v1';
   const $room = (selector) => document.querySelector(selector);
   let room = null;
@@ -15,6 +22,13 @@
   const entry = $room('#rooms-test-entry');
   entry.hidden = false;
   document.body.classList.add('rooms-test-enabled');
+  if (!useLocalService) {
+    entry.querySelector('.rooms-test-badge').textContent = 'NOVO';
+    $room('.room-entry-screen .rooms-test-badge').textContent = 'SALA ONLINE';
+    $room('.room-entry-copy>p:last-child').textContent = 'Crie uma sala, envie o código para a galera e jogue em sincronia, mesmo em celulares diferentes.';
+    $room('.room-lobby-header>.rooms-test-badge').textContent = 'AO VIVO';
+    $room('.room-share-card>small').textContent = 'Abra o convite em outro celular para entrar na sala.';
+  }
 
   function setStatus(message, error = false) {
     const element = $room('#room-entry-status');
@@ -35,7 +49,8 @@
     const url = new URL(location.href);
     url.search = '';
     url.hash = '';
-    url.searchParams.set('salas', 'teste');
+    if (useLocalService) url.searchParams.set('salas', 'local');
+    else if (onLocalhost) url.searchParams.set('salas', 'firebase');
     url.searchParams.set('sala', code);
     return url.toString();
   }
@@ -55,15 +70,16 @@
     element._timer = setTimeout(() => element.classList.remove('visible'), 2200);
   }
 
-  function connect(code) {
+  async function connect(code) {
     unsubscribe?.(); clearInterval(heartbeat);
-    unsubscribe = service.subscribe(code, (next) => {
+    unsubscribe = await service.subscribe(code, (next) => {
       if (!next) return leaveToEntry('A sala não existe mais.');
+      if (next.error) return leaveToEntry('Não foi possível acompanhar esta sala.');
       room = next;
       render();
     });
-    heartbeat = setInterval(() => service.touch(code), 5000);
-    service.touch(code);
+    heartbeat = setInterval(() => Promise.resolve(service.touch(code)).catch(() => {}), 10000);
+    Promise.resolve(service.touch(code)).catch(() => {});
   }
 
   function openEntry() {
@@ -74,7 +90,8 @@
   function leaveToEntry(message = '') {
     unsubscribe?.(); unsubscribe = null; clearInterval(heartbeat); clearInterval(gameTicker);
     room = null; lastGameSignature = '';
-    history.replaceState({}, '', `${location.pathname}?salas=teste`);
+    const returnUrl = useLocalService ? `${location.pathname}?salas=local` : location.pathname;
+    history.replaceState({}, '', returnUrl);
     showScreen('room-entry'); setStatus(message, Boolean(message));
   }
 
@@ -174,24 +191,24 @@
     return indexes.slice(0, 5);
   }
 
-  function hostUpdate(updater) {
+  async function hostUpdate(updater) {
     if (!room || !isHost()) return;
-    service.updateRoom(room.code, (next) => {
+    await service.updateRoom(room.code, (next) => {
       if (next.hostId !== service.playerId()) return next;
       return updater(next) || next;
     });
   }
 
-  function startGame() {
-    hostUpdate((next) => {
+  async function startGame() {
+    await hostUpdate((next) => {
       next.status = 'playing';
       next.game = {sceneIndexes: shuffledSceneIndexes(), roundIndex: 0, score: 0, startedAt: Date.now()};
       return next;
     });
   }
 
-  function answer(correct) {
-    hostUpdate((next) => {
+  async function answer(correct) {
+    await hostUpdate((next) => {
       const level = Math.min(4, Math.floor((Date.now() - next.game.startedAt) / 5000));
       next.status = 'answer';
       if (correct) next.game.score += [100, 80, 60, 40, 20][level];
@@ -199,8 +216,8 @@
     });
   }
 
-  function nextRound() {
-    hostUpdate((next) => {
+  async function nextRound() {
+    await hostUpdate((next) => {
       if (next.game.roundIndex >= next.game.sceneIndexes.length - 1) next.status = 'results';
       else { next.game.roundIndex += 1; next.game.startedAt = Date.now(); next.status = 'playing'; }
       return next;
@@ -213,13 +230,13 @@
     if (action === 'open-entry') openEntry();
     if (action === 'home') { unsubscribe?.(); clearInterval(heartbeat); clearInterval(gameTicker); showScreen('home'); }
     if (action === 'create') {
-      try { saveNickname(); room = service.createRoom(nickname()); history.replaceState({}, '', inviteUrl(room.code)); connect(room.code); }
+      try { saveNickname(); room = await service.createRoom(nickname()); history.replaceState({}, '', inviteUrl(room.code)); await connect(room.code); }
       catch (error) { setStatus(error.message, true); }
     }
     if (action === 'join') {
       try {
         saveNickname(); const code = service.normalizeCode($room('#room-code-input').value);
-        room = service.joinRoom(code, nickname()); history.replaceState({}, '', inviteUrl(room.code)); connect(room.code);
+        room = await service.joinRoom(code, nickname()); history.replaceState({}, '', inviteUrl(room.code)); await connect(room.code);
       } catch (error) { setStatus(error.message, true); }
     }
     if (action === 'copy-code') copyText(room.code, 'Código copiado!');
@@ -228,11 +245,11 @@
       const share = {title: 'Jogos da Raquel', text: `Entre na minha sala: ${room.code}`, url: inviteUrl()};
       if (navigator.share) navigator.share(share).catch(() => {}); else copyText(inviteUrl(), 'Link copiado!');
     }
-    if (action === 'start') startGame();
-    if (action === 'correct') answer(true);
-    if (action === 'pass') answer(false);
-    if (action === 'next') nextRound();
-    if (action === 'back-lobby') hostUpdate((next) => { next.status = 'lobby'; next.game = null; return next; });
+    if (action === 'start') await startGame();
+    if (action === 'correct') await answer(true);
+    if (action === 'pass') await answer(false);
+    if (action === 'next') await nextRound();
+    if (action === 'back-lobby') await hostUpdate((next) => { next.status = 'lobby'; next.game = null; return next; });
   });
 
   $room('#room-code-input').addEventListener('input', (event) => { event.target.value = service.normalizeCode(event.target.value); });
@@ -240,11 +257,11 @@
   const linkedCode = service.normalizeCode(params.get('sala'));
   if (linkedCode) {
     $room('#room-code-input').value = linkedCode;
-    const linkedRoom = service.getRoom(linkedCode);
+    const linkedRoom = await service.getRoom(linkedCode);
     const savedPlayer = linkedRoom?.players?.[service.playerId()];
     if (savedPlayer && linkedRoom.status !== 'closed') {
-      room = service.joinRoom(linkedCode, savedPlayer.name);
-      connect(linkedCode);
+      room = await service.joinRoom(linkedCode, savedPlayer.name);
+      await connect(linkedCode);
     } else openEntry();
   }
 })();
