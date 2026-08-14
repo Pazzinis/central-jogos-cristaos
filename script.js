@@ -126,13 +126,105 @@ function renderCatalog() {
     return `<section class="category-section">
       <header class="category-heading"><div><h2>${category}</h2><p>${descriptions[category]}</p></div><b>${games.length} ${games.length === 1 ? 'jogo' : 'jogos'}</b></header>
       <div class="category-list">${games.map((game) => `
-        <button class="catalog-card ${game.id === 'who' ? 'featured' : ''}" data-game="${game.id}" data-accent="${game.accent}" aria-label="Jogar ${game.title}">
-          <span class="catalog-icon" aria-hidden="true">${game.icon}</span>
-          <span class="card-copy"><h3>${game.title}</h3><p>${game.description}</p></span>
-          <span class="card-arrow">→</span>
-        </button>`).join('')}</div>
+        <article class="catalog-card ${game.id === 'who' ? 'featured' : ''}" data-accent="${game.accent}">
+          <div class="card-art" data-banner-game="${game.id}" aria-hidden="true">
+            <span class="catalog-icon">${game.icon}</span>
+            <span class="card-art-pattern"></span>
+          </div>
+          <div class="card-copy">
+            <span class="card-category">${game.category}</span>
+            <h3>${game.title}</h3>
+            <p>${game.description}</p>
+          </div>
+          <div class="card-actions">
+            <button class="card-how" data-action="how-to-play" data-game-id="${game.id}" aria-label="Como jogar ${game.title}">Como jogar</button>
+            <button class="card-start" data-game="${game.id}" aria-label="Começar ${game.title}">Começar <span aria-hidden="true">→</span></button>
+          </div>
+        </article>`).join('')}</div>
     </section>`;
   }).join('');
+}
+
+const HOW_TO_GUIDES = {
+  cards: {
+    players: '3 ou mais pessoas',
+    preparation: 'Escolha o tempo da rodada e deixe o celular com quem dará as pistas.',
+    steps: ['Uma carta aparece na tela.', 'A pessoa representa, desenha ou dá pistas conforme a regra do jogo.', 'Marque “Acertei” ou “Passei” para seguir para a próxima carta.'],
+    scoring: 'Cada acerto vale 1 ponto. Tentem superar a pontuação na próxima rodada.'
+  },
+  quiz: {
+    players: '1 pessoa ou um grupo',
+    preparation: 'Escolha 5 ou 10 rodadas e decidam se as respostas serão individuais ou em conjunto.',
+    steps: ['Leia a pergunta em voz alta.', 'Escolha uma das alternativas.', 'Confira a resposta e a explicação antes de avançar.'],
+    scoring: 'Cada resposta correta vale 1 ponto.'
+  },
+  clues: {
+    players: '2 ou mais pessoas',
+    preparation: 'Escolha 5 ou 10 personagens para a partida.',
+    steps: ['A primeira pista aparece valendo 5 pontos.', 'Revele outra pista se o grupo ainda não souber.', 'Quando descobrirem, marque o acerto; quanto menos pistas usarem, mais pontos ganham.'],
+    scoring: 'A rodada começa valendo 5 pontos e perde 1 ponto a cada nova pista.'
+  },
+  battle: {
+    players: '2 equipes',
+    preparation: 'Dividam a turma e deem um nome para cada equipe.',
+    steps: ['As equipes respondem alternadamente.', 'Leia a pergunta e escolha a resposta da equipe da vez.', 'Depois da explicação, passe o celular e avance.'],
+    scoring: 'Cada resposta correta vale 1 ponto para a equipe da vez.'
+  },
+  infiltrator: {
+    players: '4 a 12 pessoas',
+    preparation: 'Sentem-se em roda e escolham quantas pessoas vão jogar.',
+    steps: ['Passe o celular para cada pessoa ver sua palavra em segredo.', 'Cada participante dá uma pista curta sem revelar a palavra.', 'Conversem, votem e só então revelem quem era o infiltrado.'],
+    scoring: 'O grupo vence se descobrir o infiltrado; ele vence se escapar da votação.'
+  },
+  grace: {
+    players: '3 ou mais pessoas',
+    preparation: 'Escolha 5 ou 10 objetos e defina a ordem dos participantes.',
+    steps: ['A pessoa recebe um objeto aleatório.', 'Ela pensa por 30 segundos.', 'Depois tem 1 minuto para conectar o objeto à graça de Jesus.'],
+    scoring: 'O grupo decide se a conexão foi clara e fez sentido.'
+  },
+  versehunt: {
+    players: '2 equipes',
+    preparation: 'Cada equipe precisa de pelo menos uma Bíblia física.',
+    steps: ['O mediador lê a pista mostrada no celular.', 'As equipes procuram a passagem sem usar o celular.', 'Marque quem encontrou primeiro e revele a referência.'],
+    scoring: 'A primeira equipe a encontrar corretamente ganha 1 ponto.'
+  },
+  reveal: {
+    players: '2 ou mais pessoas',
+    preparation: 'Escolha 5 ou 10 imagens e deixe a tela visível para todos.',
+    steps: ['A imagem começa bastante desfocada.', 'A cada etapa ela fica mais nítida.', 'Quando o grupo souber a história, marque o acerto e confira a resposta.'],
+    scoring: 'Quanto mais cedo acertarem, mais pontos a imagem vale.'
+  },
+  mimechain: {
+    players: '3 a 12 pessoas',
+    preparation: 'Formem uma fila; somente a primeira pessoa pode ver a história inicial.',
+    steps: ['A primeira pessoa faz a mímica para a segunda.', 'Cada pessoa repete apenas o que entendeu para a próxima.', 'A última diz qual história acredita ter recebido.'],
+    scoring: 'O grupo marca o ponto quando a resposta final preserva a história original.'
+  }
+};
+
+function openHowToPlay(gameId) {
+  const game = DATA.games.find((item) => item.id === gameId);
+  if (!game) return;
+  const guide = HOW_TO_GUIDES[game.mode] || HOW_TO_GUIDES.cards;
+  const dialog = $('#how-to-dialog');
+  $('#how-to-icon').textContent = game.icon;
+  $('#how-to-category').textContent = game.category;
+  $('#how-to-title').textContent = game.title;
+  $('#how-to-description').textContent = game.description;
+  $('#how-to-main-rule').textContent = game.rules;
+  $('#how-to-players').textContent = guide.players;
+  $('#how-to-preparation').textContent = guide.preparation;
+  $('#how-to-steps').innerHTML = guide.steps.map((step) => `<li>${step}</li>`).join('');
+  $('#how-to-scoring').textContent = guide.scoring;
+  $('#how-to-start').dataset.game = game.id;
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+}
+
+function closeHowToPlay() {
+  const dialog = $('#how-to-dialog');
+  if (typeof dialog.close === 'function') dialog.close();
+  else dialog.removeAttribute('open');
 }
 
 function openSetup(gameId) {
@@ -574,13 +666,15 @@ window.addEventListener('deviceorientation',(event)=>{
 
 document.addEventListener('click',(event)=>{
   const target=event.target.closest('[data-action],[data-game],[data-duration],[data-rounds],[data-answer],[data-battle-answer]');if(!target)return;
-  if(target.dataset.game){openSetup(target.dataset.game);return;}
+  if(target.dataset.game){if(target.closest('#how-to-dialog'))closeHowToPlay();openSetup(target.dataset.game);return;}
   if(target.dataset.duration){state.duration=Number(target.dataset.duration);renderSetupPanel();return;}
   if(target.dataset.rounds){state.rounds=Number(target.dataset.rounds);renderSetupPanel();return;}
   if(target.dataset.answer!==undefined){answerQuestion(Number(target.dataset.answer));return;}
   if(target.dataset.battleAnswer!==undefined){answerBattle(Number(target.dataset.battleAnswer));return;}
   const action=target.dataset.action;
   if(action==='home'){clearRunning();showScreen('home');}
+  else if(action==='how-to-play')openHowToPlay(target.dataset.gameId);
+  else if(action==='close-how-to')closeHowToPlay();
   else if(action==='open-share')openShare();
   else if(action==='close-share')closeShare();
   else if(action==='copy-link')copySiteLink();
@@ -627,3 +721,4 @@ document.addEventListener('keydown',(event)=>{if(state.game?.mode!=='cards'||!st
 renderCatalog();
 
 $('#campaign-dialog').addEventListener('cancel', (event) => event.preventDefault());
+$('#how-to-dialog').addEventListener('cancel', closeHowToPlay);
