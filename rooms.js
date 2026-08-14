@@ -1,7 +1,7 @@
 import {
   ONLINE_GAMES, ONLINE_GAME_IDS, isCorrectText, makeDeck, poolKeys,
   progressivePoints, resolveOnlineItem, roundLevel, scoreAfter
-} from './online-games.js?v=2';
+} from './online-games.js?v=3';
 
 (async () => {
   const params = new URLSearchParams(location.search);

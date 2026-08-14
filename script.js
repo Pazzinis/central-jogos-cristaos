@@ -77,6 +77,20 @@ function freshDeck(items, key) {
   return [...shuffle(unseen), ...shuffle(previous)];
 }
 
+function balancedTruthDeck(items, key) {
+  const ordered = freshDeck(items, key);
+  const groups = [0, 1].map((answer) => ordered.filter((item) => item.answer === answer));
+  const result = [];
+  let answer = Math.random() < .5 ? 0 : 1;
+  while (result.length < ordered.length) {
+    const next = groups[answer].shift() ?? groups[1 - answer].shift();
+    if (!next) break;
+    result.push(next);
+    answer = 1 - answer;
+  }
+  return result;
+}
+
 function rememberItem(key, item) {
   if (!key || !item) return;
   const history = readHistory();
@@ -355,7 +369,7 @@ function nextCardCountdown() {
 }
 
 function startQuiz() {
-  state.historyKey=`quiz:${state.game.id}`;state.deck=freshDeck(DATA.quizzes[state.game.id],state.historyKey).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;configurePlay();renderQuestion();
+  state.historyKey=`quiz:${state.game.id}`;state.deck=(state.game.id==='truth'?balancedTruthDeck(DATA.quizzes.truth,state.historyKey):freshDeck(DATA.quizzes[state.game.id],state.historyKey)).slice(0,state.rounds);state.index=0;state.score=0;state.active=true;configurePlay();renderQuestion();
 }
 
 function renderQuestion() {

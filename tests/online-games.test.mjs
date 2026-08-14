@@ -18,6 +18,19 @@ test('os sete jogos online possuem conteúdo e baralho válido', () => {
   assert.equal(engine.makeDeck('reveal', 20).length, 16);
 });
 
+test('verdadeiro ou falso tem banco e partidas equilibradas', () => {
+  const items = window.MONTE_DATA.quizzes.truth;
+  const totals = [0, 1].map((answer) => items.filter((item) => item.answer === answer).length);
+  assert.ok(Math.abs(totals[0] - totals[1]) <= 1, `banco desequilibrado: ${totals.join(' x ')}`);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const answers = engine.makeDeck('truth', 20).map((key) => engine.resolveOnlineItem('truth', key).answer);
+    const trueCount = answers.filter((answer) => answer === 0).length;
+    const falseCount = answers.filter((answer) => answer === 1).length;
+    assert.ok(Math.abs(trueCount - falseCount) <= 1);
+    assert.ok(answers.every((answer, index) => index === 0 || answer !== answers[index - 1]));
+  }
+});
+
 test('respostas textuais aceitam variações sem aceitar personagens errados', () => {
   const reveal = window.MONTE_DATA.revealImages;
   assert.equal(engine.isCorrectText(reveal[1].answer, 'davi contra golias'), true);

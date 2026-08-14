@@ -81,11 +81,30 @@ export function poolKeys(gameId) {
 
 export function makeDeck(gameId, rounds) {
   const keys = [...poolKeys(gameId)];
+  const limit = Math.min(20, Math.max(1, rounds), keys.length);
+  if (gameId === 'truth') {
+    const groups = [0, 1].map((answer) => keys.filter((key) => DATA.quizzes.truth[key].answer === answer));
+    groups.forEach((group) => {
+      for (let index = group.length - 1; index > 0; index -= 1) {
+        const random = Math.floor(Math.random() * (index + 1));
+        [group[index], group[random]] = [group[random], group[index]];
+      }
+    });
+    const balanced = [];
+    let answer = Math.random() < .5 ? 0 : 1;
+    while (balanced.length < limit) {
+      const next = groups[answer].pop() ?? groups[1 - answer].pop();
+      if (next === undefined) break;
+      balanced.push(next);
+      answer = 1 - answer;
+    }
+    return balanced;
+  }
   for (let index = keys.length - 1; index > 0; index -= 1) {
     const random = Math.floor(Math.random() * (index + 1));
     [keys[index], keys[random]] = [keys[random], keys[index]];
   }
-  return keys.slice(0, Math.min(20, Math.max(1, rounds), keys.length));
+  return keys.slice(0, limit);
 }
 
 export function resolveOnlineItem(gameId, key) {
