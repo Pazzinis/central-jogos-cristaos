@@ -69,6 +69,9 @@
 .category-list .card-art .catalog-icon,.category-list .featured .card-art .catalog-icon{position:relative;z-index:2;width:auto;height:auto;border:0;border-radius:0;background:transparent;color:var(--ink);font:italic 800 clamp(64px,8vw,102px)/1 'Playfair Display',serif;transform:rotate(-7deg)}
 .category-list .featured .card-art .catalog-icon{color:var(--ink)}
 .card-art-pattern,.card-art:before,.card-art:after{content:'';position:absolute;border:1px solid #102e2520;border-radius:50%;z-index:1}.card-art-pattern{width:155px;height:155px;right:-47px;bottom:-70px;box-shadow:0 0 0 27px #102e2508,0 0 0 55px #102e2505}.card-art:before{width:74px;height:74px;left:-25px;top:-25px;background:#fff3}.card-art:after{width:9px;height:9px;right:24px;top:22px;background:var(--orange);border:0;box-shadow:-24px 18px 0 var(--ink),17px 32px 0 #fff8}
+.card-art[data-banner-game=who]{background-image:url('banner-quem-sou-eu.webp');background-size:cover;background-position:center 52%}
+.card-art[data-banner-game=who] .catalog-icon,.card-art[data-banner-game=who] .card-art-pattern{display:none}
+.card-art[data-banner-game=who]:before,.card-art[data-banner-game=who]:after{display:none}
 .category-list .card-copy{align-self:center;padding:28px clamp(24px,4vw,44px);min-width:0}
 .card-category{display:block;margin-bottom:10px;color:var(--orange);font-size:8px;font-weight:800;letter-spacing:.17em;text-transform:uppercase}
 .featured .card-category{color:var(--lime)}
