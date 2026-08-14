@@ -10,7 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jogosdaraquel.vercel.app/">
   <link rel="manifest" href="manifest.webmanifest?v=2">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
   <title>Jogos da Raquel — Jogos Cristãos</title>
 </head>
 <body>
@@ -170,10 +170,32 @@
   <a href="https://www.vakinha.com.br/vaquinha/juntos-pelo-meu-proximo-passo-raquel-lucero?utm_campaign=share-sharemodal&amp;utm_content=6259326&amp;utm_medium=share-bottom-link&amp;utm_source=socialshares-app-share" target="_blank" rel="noopener noreferrer">Conhecer a Vakinha</a>
   <button data-action="close-campaign">OK, continuar</button>
 </dialog>
+<dialog class="how-to-dialog" id="how-to-dialog" aria-labelledby="how-to-title">
+  <button class="how-to-close" data-action="close-how-to" aria-label="Fechar instruções">×</button>
+  <header class="how-to-header">
+    <span class="how-to-icon" id="how-to-icon" aria-hidden="true">?</span>
+    <div><small id="how-to-category">ADIVINHAÇÃO</small><h2 id="how-to-title">Como jogar</h2></div>
+  </header>
+  <p class="how-to-description" id="how-to-description"></p>
+  <section class="how-to-main-rule"><small>REGRA PRINCIPAL</small><p id="how-to-main-rule"></p></section>
+  <div class="how-to-summary">
+    <section><small>QUEM JOGA</small><strong id="how-to-players"></strong></section>
+    <section><small>PREPARAÇÃO</small><strong id="how-to-preparation"></strong></section>
+  </div>
+  <section class="how-to-rules">
+    <small>PASSO A PASSO</small>
+    <ol id="how-to-steps"></ol>
+  </section>
+  <section class="how-to-score"><small>PONTUAÇÃO</small><p id="how-to-scoring"></p></section>
+  <div class="how-to-actions">
+    <button class="secondary-button" data-action="close-how-to">Agora não</button>
+    <button class="primary-button" id="how-to-start" data-game="who">Começar <span>→</span></button>
+  </div>
+</dialog>
 <script src="data.js?v=8"></script>
 <script src="expansion.js?v=8"></script>
 <script src="new-games.js?v=1"></script>
-<script src="script.js?v=12"></script>
+<script src="script.js?v=13"></script>
 <script src="room-local-service.js?v=1"></script>
 <script type="module" src="rooms.js?v=2"></script>
 </body>
