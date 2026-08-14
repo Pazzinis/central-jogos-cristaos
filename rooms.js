@@ -10,11 +10,19 @@ import {
   const service = useLocalService
     ? window.JDRRoomServices?.local
     : (await import('./firebase-room-service.js')).firebaseRoomService;
+  const nicknameKey = 'jdr-player-name-v1';
+  const $room = (selector) => document.querySelector(selector);
+  const linkedCode = service.normalizeCode(params.get('sala'));
+  if (linkedCode) {
+    showScreen('room-entry');
+    $room('.room-entry-screen').classList.add('invite-mode');
+    $room('#room-code-input').value = linkedCode;
+    $room('#room-nickname').value = localStorage.getItem(nicknameKey) || '';
+    $room('#room-entry-status').textContent = 'Abrindo o convite…';
+  }
   try { await service.ready?.(); }
   catch (error) { console.error('Não foi possível iniciar as salas:', error); return; }
 
-  const nicknameKey = 'jdr-player-name-v1';
-  const $room = (selector) => document.querySelector(selector);
   let room = null;
   let unsubscribe = null;
   let heartbeat = null;
@@ -85,7 +93,22 @@ import {
     Promise.resolve(service.touch(code)).catch(() => {});
   }
 
-  function openEntry() { showScreen('room-entry'); setTimeout(() => $room('#room-nickname').focus(), 50); }
+  function openEntry(inviteCode = '') {
+    const invite = Boolean(inviteCode);
+    const screen = $room('.room-entry-screen');
+    screen.classList.toggle('invite-mode', invite);
+    screen.querySelector('h2').innerHTML = invite ? 'Você recebeu<br><em>um convite.</em>' : 'Todo mundo<br><em>na mesma rodada.</em>';
+    screen.querySelector('.room-entry-copy>p:last-child').textContent = invite
+      ? `Sala ${inviteCode}: escolha seu apelido para entrar.`
+      : useLocalService
+        ? 'Nesta simulação, a sala funciona entre abas deste navegador.'
+        : 'Crie uma sala, envie o código e jogue em sincronia mesmo estando longe.';
+    $room('[data-room-action="join"]').textContent = invite ? 'Entrar na sala →' : 'Entrar na sala';
+    if (invite) $room('#room-code-input').value = inviteCode;
+    setStatus('');
+    showScreen('room-entry');
+    setTimeout(() => $room('#room-nickname').focus(), 50);
+  }
   function leaveToEntry(message = '') {
     clearConnections(); room = null; lastSessionSynced = '';
     const returnUrl = useLocalService ? `${location.pathname}?salas=local` : location.pathname;
@@ -269,7 +292,7 @@ import {
 
   function renderRoundAnswer(now) {
     const item = currentItem(); if (!item) return;
-    $room('#room-game-timer').textContent = `${Math.max(0, Math.ceil((room.game.answerEndsAt - now) / 1000))}s`;
+    $room('#room-game-timer').textContent = '—';
     const explanation = item.explanation || item.ref || '';
     const fullImage = room.selectedGame === 'reveal' ? `<div class="room-reveal-image reveal-level-4" style="${spriteStyle(item)}"></div>` : '';
     $room('#room-game-stage').innerHTML = `<div class="room-round-result">${fullImage}<small>A RESPOSTA ERA</small><h2>${escapeHtml(correctAnswer(item))}</h2>${explanation ? `<p>${escapeHtml(explanation)}</p>` : ''}${renderLeaderboard(false)}</div>`;
@@ -305,13 +328,13 @@ import {
     try {
       await hostUpdate((next) => {
         if (action === 'play' && next.status === 'countdown') next.status = 'playing';
-        if (action === 'answer' && next.status === 'playing') { next.status = 'answer'; next.game.answerEndsAt = Date.now() + 6000; }
+        if (action === 'answer' && next.status === 'playing') { next.status = 'answer'; next.game.answerEndsAt = Date.now() + 3000; }
         if (action === 'next' && next.status === 'answer') {
           if (next.game.roundIndex >= next.game.deck.length - 1) next.status = 'results';
           else {
-            next.game.roundIndex += 1; next.game.roundStartedAt = Date.now() + 5000;
+            next.game.roundIndex += 1; next.game.roundStartedAt = Date.now();
             next.game.roundEndsAt = next.game.roundStartedAt + ONLINE_GAMES[next.selectedGame].duration * 1000;
-            next.status = 'countdown';
+            next.status = 'playing';
           }
         }
         return next;
@@ -393,7 +416,7 @@ import {
     const action = event.target.closest('[data-room-action]')?.dataset.roomAction;
     if (!action) return;
     if (action === 'open-entry') openEntry();
-    if (action === 'home') { clearConnections(); showScreen('home'); }
+    if (action === 'home') { clearConnections(); history.replaceState({}, '', location.pathname); showScreen('home'); }
     if (action === 'create') {
       try { saveNickname(); room = await service.createRoom(nickname()); history.replaceState({}, '', inviteUrl(room.code)); await connect(room.code); }
       catch (error) { setStatus(error.message, true); }
@@ -419,12 +442,17 @@ import {
 
   $room('#room-code-input').addEventListener('input', (event) => { event.target.value = service.normalizeCode(event.target.value); });
   $room('#room-nickname').value = localStorage.getItem(nicknameKey) || '';
-  const linkedCode = service.normalizeCode(params.get('sala'));
   if (linkedCode) {
     $room('#room-code-input').value = linkedCode;
     const linkedRoom = await service.getRoom(linkedCode);
     const savedPlayer = linkedRoom?.players?.[service.playerId()];
     if (savedPlayer && linkedRoom.status !== 'closed') { room = await service.joinRoom(linkedCode, savedPlayer.name); await connect(linkedCode); }
-    else openEntry();
+    else {
+      const savedName = localStorage.getItem(nicknameKey) || '';
+      if (savedName) {
+        try { room = await service.joinRoom(linkedCode, savedName); await connect(linkedCode); }
+        catch (error) { openEntry(linkedCode); setStatus(error.message, true); }
+      } else openEntry(linkedCode);
+    }
   }
 })();
