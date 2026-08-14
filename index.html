@@ -9,8 +9,9 @@
   <meta property="og:description" content="Uma central de jogos cristãos para jogar em grupo e apoiar a Raquel.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jogosdaraquel.vercel.app/">
+  <link rel="icon" type="image/webp" href="banner-quem-sou-eu.webp">
   <link rel="manifest" href="manifest.webmanifest?v=2">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=18">
   <title>Jogos da Raquel — Jogos Cristãos</title>
 </head>
 <body>
@@ -33,7 +34,7 @@
     </aside>
     <section class="rooms-test-entry" id="rooms-test-entry" hidden aria-labelledby="rooms-test-title">
       <span class="rooms-test-badge">TESTE LOCAL</span>
-      <div><small>JOGUE EM GRUPO</small><h2 id="rooms-test-title">Uma sala, várias telas.</h2><p>Crie um código, convide a galera e jogue Imagem Revelada em sincronia.</p></div>
+      <div><small>JOGUE EM VÁRIOS CELULARES</small><h2 id="rooms-test-title">Uma sala, vários celulares conectados.</h2><p>Crie o código e todos acompanham a mesma rodada em seus celulares.</p></div>
       <button data-room-action="open-entry">Criar ou entrar em uma sala <span>→</span></button>
     </section>
     <div class="game-grid" id="game-grid"></div>
@@ -102,11 +103,19 @@
       <section class="room-players-card">
         <div class="room-card-title"><div><small>NA SALA</small><h3>Participantes</h3></div><b id="room-player-count">1 pessoa</b></div>
         <ul id="room-player-list"></ul>
+        <div class="room-team-controls" id="room-team-controls" hidden><small>MINHA EQUIPE</small><button data-room-action="toggle-team">Equipe A</button></div>
+        <button class="room-ready-button" id="room-ready-button" data-room-action="toggle-ready">Estou pronto</button>
       </section>
       <section class="room-game-card">
-        <div class="room-card-title"><div><small>JOGO ESCOLHIDO</small><h3>Imagem Revelada</h3></div><span>◫</span></div>
-        <p>A ilustração aparece igual para todos e vai ficando mais clara a cada 5 segundos.</p>
-        <div id="room-host-controls"><button class="room-primary" data-room-action="start">Começar partida <span>→</span></button></div>
+        <div class="room-card-title"><div><small>JOGO ONLINE</small><h3 id="room-selected-title">Verdadeiro ou Falso</h3></div><span id="room-selected-icon">✓</span></div>
+        <p id="room-selected-description">Todos respondem à mesma afirmação.</p>
+        <div class="room-game-settings" id="room-host-settings">
+          <label for="room-game-select">ESCOLHA O JOGO</label>
+          <select id="room-game-select" aria-label="Jogo da sala"></select>
+          <label>QUANTIDADE DE RODADAS</label>
+          <div class="room-rounds-control"><button data-room-action="rounds-down" aria-label="Diminuir rodadas">−</button><strong id="room-rounds">5</strong><button data-room-action="rounds-up" aria-label="Aumentar rodadas">+</button></div>
+        </div>
+        <div id="room-host-controls"><button class="room-primary" id="room-start-button" data-room-action="start">Começar partida <span>→</span></button><small id="room-start-help"></small></div>
         <p id="room-guest-note" class="room-guest-note">Aguardando o organizador começar.</p>
       </section>
     </div>
@@ -115,8 +124,8 @@
   <section class="screen room-game-screen" data-screen="room-game">
     <header class="room-game-hud">
       <button data-room-action="home" aria-label="Sair da partida">×</button>
-      <div><small>IMAGEM REVELADA</small><strong id="room-game-round">RODADA 1 / 5</strong></div>
-      <div><small>PONTOS</small><strong id="room-game-score">0</strong></div>
+      <div><small id="room-game-label">JOGO ONLINE</small><strong id="room-game-round">RODADA 1 / 5</strong></div>
+      <div><small id="room-score-label">MEUS PONTOS</small><strong id="room-game-score">0</strong></div>
       <div><small>TEMPO</small><strong id="room-game-timer">20s</strong></div>
     </header>
     <div class="room-game-stage" id="room-game-stage"></div>
@@ -176,27 +185,20 @@
     <span class="how-to-icon" id="how-to-icon" aria-hidden="true">?</span>
     <div><small id="how-to-category">ADIVINHAÇÃO</small><h2 id="how-to-title">Como jogar</h2></div>
   </header>
-  <p class="how-to-description" id="how-to-description"></p>
-  <section class="how-to-main-rule"><small>REGRA PRINCIPAL</small><p id="how-to-main-rule"></p></section>
-  <div class="how-to-summary">
-    <section><small>QUEM JOGA</small><strong id="how-to-players"></strong></section>
-    <section><small>PREPARAÇÃO</small><strong id="how-to-preparation"></strong></section>
-  </div>
   <section class="how-to-rules">
-    <small>PASSO A PASSO</small>
+    <small>COMO JOGAR</small>
     <ol id="how-to-steps"></ol>
   </section>
-  <section class="how-to-score"><small>PONTUAÇÃO</small><p id="how-to-scoring"></p></section>
   <div class="how-to-actions">
-    <button class="secondary-button" data-action="close-how-to">Agora não</button>
+    <button class="secondary-button" data-action="close-how-to">Voltar</button>
     <button class="primary-button" id="how-to-start" data-game="who">Começar <span>→</span></button>
   </div>
 </dialog>
 <script src="data.js?v=8"></script>
 <script src="expansion.js?v=8"></script>
 <script src="new-games.js?v=1"></script>
-<script src="script.js?v=13"></script>
-<script src="room-local-service.js?v=1"></script>
-<script type="module" src="rooms.js?v=2"></script>
+<script src="script.js?v=17"></script>
+<script src="room-local-service.js?v=2"></script>
+<script type="module" src="rooms.js?v=4"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const ROOM_LIFETIME_MS = 6 * 60 * 60 * 1000;
 let authPromise;
 
 function normalizeCode(code) {
@@ -57,17 +58,17 @@ async function createRoom(name) {
     const playerRef = doc(db, 'rooms', code, 'players', user.uid);
     const now = Date.now();
     const room = {
-      version: 1, code, hostId: user.uid, createdAt: now, updatedAt: now, revision: 1,
-      status: 'lobby', selectedGame: 'reveal', game: null
+      version: 2, code, hostId: user.uid, createdAt: now, updatedAt: now, revision: 1,
+      status: 'lobby', selectedGame: 'truth', rounds: 5, game: null
     };
     try {
       await runTransaction(db, async (transaction) => {
         const existing = await transaction.get(roomRef);
         if (existing.exists()) throw new Error('CODE_COLLISION');
         transaction.set(roomRef, room);
-        transaction.set(playerRef, {id: user.uid, name: clean, joinedAt: now, lastSeen: now});
+        transaction.set(playerRef, {id: user.uid, name: clean, joinedAt: now, lastSeen: now, ready: true, score: 0, team: 'A'});
       });
-      return publicRoom(room, {[user.uid]: {id: user.uid, name: clean, joinedAt: now, lastSeen: now}});
+      return publicRoom(room, {[user.uid]: {id: user.uid, name: clean, joinedAt: now, lastSeen: now, ready: true, score: 0, team: 'A'}});
     } catch (error) {
       if (error.message !== 'CODE_COLLISION') throw error;
     }
@@ -82,11 +83,17 @@ async function joinRoom(code, name) {
   const roomRef = doc(db, 'rooms', normalized);
   const roomSnapshot = await getDoc(roomRef);
   if (!roomSnapshot.exists()) throw new Error('Sala não encontrada. Confira o código.');
-  if (roomSnapshot.data().status === 'closed') throw new Error('Esta sala já foi encerrada.');
+  const roomData = roomSnapshot.data();
+  if (roomData.version !== 2) throw new Error('Esta sala usa uma versão antiga. Crie uma sala nova.');
+  if (Date.now() - roomData.createdAt > ROOM_LIFETIME_MS) throw new Error('Esta sala expirou. Peça ao organizador para criar outra.');
+  if (roomData.status === 'closed') throw new Error('Esta sala já foi encerrada.');
   const now = Date.now();
-  await setDoc(doc(db, 'rooms', normalized, 'players', user.uid), {
-    id: user.uid, name: clean, joinedAt: now, lastSeen: now
-  }, {merge: true});
+  const playerRef = doc(db, 'rooms', normalized, 'players', user.uid);
+  const existingPlayer = await getDoc(playerRef);
+  const player = existingPlayer.exists() ? existingPlayer.data() : {
+    id: user.uid, name: clean, joinedAt: now, ready: false, score: 0, team: 'A'
+  };
+  await setDoc(playerRef, {...player, id: user.uid, name: clean, lastSeen: now}, {merge: true});
   return getRoom(normalized);
 }
 
@@ -119,6 +126,39 @@ async function updateRoom(code, updater) {
   });
 }
 
+async function updatePlayer(code, updater) {
+  const normalized = normalizeCode(code);
+  const user = await ensureAuth();
+  const playerRef = doc(db, 'rooms', normalized, 'players', user.uid);
+  return runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(playerRef);
+    if (!snapshot.exists()) throw new Error('Você não está mais nesta sala.');
+    const next = updater(structuredClone(snapshot.data())) || snapshot.data();
+    next.id = user.uid;
+    next.lastSeen = Date.now();
+    transaction.set(playerRef, next);
+    return next;
+  });
+}
+
+async function claimHost(code) {
+  const normalized = normalizeCode(code);
+  const user = await ensureAuth();
+  const roomRef = doc(db, 'rooms', normalized);
+  return runTransaction(db, async (transaction) => {
+    const roomSnapshot = await transaction.get(roomRef);
+    if (!roomSnapshot.exists()) return null;
+    const current = roomSnapshot.data();
+    if (current.hostId === user.uid) return current;
+    const hostSnapshot = await transaction.get(doc(db, 'rooms', normalized, 'players', current.hostId));
+    const hostLastSeen = hostSnapshot.exists() ? hostSnapshot.data().lastSeen : 0;
+    if (Date.now() - hostLastSeen <= 20000) return current;
+    const next = {...current, hostId: user.uid, updatedAt: Date.now(), revision: (current.revision || 0) + 1};
+    transaction.set(roomRef, next);
+    return next;
+  });
+}
+
 async function touch(code) {
   const user = await ensureAuth();
   try { await updateDoc(doc(db, 'rooms', normalizeCode(code), 'players', user.uid), {lastSeen: Date.now()}); }
@@ -146,5 +186,5 @@ async function subscribe(code, listener) {
 
 export const firebaseRoomService = {
   kind: 'firebase', ready: ensureAuth, playerId: () => auth.currentUser?.uid || '',
-  normalizeCode, getRoom, createRoom, joinRoom, updateRoom, touch, subscribe
+  normalizeCode, getRoom, createRoom, joinRoom, updateRoom, updatePlayer, claimHost, touch, subscribe
 };

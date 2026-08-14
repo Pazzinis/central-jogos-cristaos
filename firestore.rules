@@ -21,25 +21,33 @@ service cloud.firestore {
       return signedIn() && get(roomPath(roomCode)).data.hostId == request.auth.uid;
     }
 
+    function canClaimHost(roomCode) {
+      return isMember(roomCode)
+        && request.resource.data.hostId == request.auth.uid
+        && (!exists(playerPath(roomCode, resource.data.hostId))
+          || get(playerPath(roomCode, resource.data.hostId)).data.lastSeen < request.time.toMillis() - 20000);
+    }
+
     match /rooms/{roomCode} {
       allow get: if signedIn();
       allow list: if false;
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
           'version', 'code', 'hostId', 'createdAt', 'updatedAt', 'revision',
-          'status', 'selectedGame', 'game'
+          'status', 'selectedGame', 'rounds', 'game'
         ])
         && request.resource.data.code == roomCode
         && request.resource.data.hostId == request.auth.uid
         && request.resource.data.status == 'lobby'
-        && request.resource.data.selectedGame == 'reveal';
-      allow update: if isHost(roomCode)
-        && request.resource.data.hostId == resource.data.hostId
+        && request.resource.data.version == 2
+        && request.resource.data.selectedGame in ['truth', 'verse', 'quote', 'battle', 'clues', 'emoji', 'reveal'];
+      allow update: if (isHost(roomCode) || canClaimHost(roomCode))
+        && (request.resource.data.hostId == resource.data.hostId || canClaimHost(roomCode))
         && request.resource.data.code == resource.data.code
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.status in ['lobby', 'playing', 'answer', 'results', 'closed']
+        && request.resource.data.status in ['lobby', 'countdown', 'playing', 'answer', 'results', 'closed']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status', 'selectedGame', 'game', 'updatedAt', 'revision'
+          'hostId', 'status', 'selectedGame', 'rounds', 'game', 'updatedAt', 'revision'
         ]);
       allow delete: if false;
 
@@ -48,7 +56,10 @@ service cloud.firestore {
         allow list: if isMember(roomCode);
         allow create: if signedIn()
           && playerId == request.auth.uid
-          && request.resource.data.keys().hasOnly(['id', 'name', 'joinedAt', 'lastSeen'])
+          && request.resource.data.keys().hasOnly([
+            'id', 'name', 'joinedAt', 'lastSeen', 'ready', 'score', 'team', 'sessionId',
+            'answerRound', 'answerStatus', 'answerValue', 'answerAt', 'answerLevel', 'roundDelta'
+          ])
           && request.resource.data.id == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.name.size() >= 2
@@ -57,7 +68,10 @@ service cloud.firestore {
         allow update: if signedIn()
           && playerId == request.auth.uid
           && request.resource.data.id == resource.data.id
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'joinedAt', 'lastSeen'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'joinedAt', 'lastSeen', 'ready', 'score', 'team', 'sessionId',
+            'answerRound', 'answerStatus', 'answerValue', 'answerAt', 'answerLevel', 'roundDelta'
+          ])
           && request.resource.data.name is string
           && request.resource.data.name.size() >= 2
           && request.resource.data.name.size() <= 20;

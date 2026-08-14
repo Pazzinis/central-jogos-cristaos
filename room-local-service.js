@@ -1,8 +1,9 @@
 (() => {
-  const PREFIX = 'jdr-room-v1-';
-  const CHANNEL = 'jdr-rooms-v1';
+  const PREFIX = 'jdr-room-v2-';
+  const CHANNEL = 'jdr-rooms-v2';
   const PLAYER_KEY = 'jdr-room-player-id-v1';
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const ROOM_LIFETIME_MS = 6 * 60 * 60 * 1000;
   const listeners = new Map();
   const channel = 'BroadcastChannel' in window ? new BroadcastChannel(CHANNEL) : null;
 
@@ -20,6 +21,11 @@
   }
 
   function key(code) { return `${PREFIX}${normalizeCode(code)}`; }
+
+  function withLock(code, task) {
+    if (navigator.locks?.request) return navigator.locks.request(`jdr-room-${normalizeCode(code)}`, task);
+    return Promise.resolve().then(task);
+  }
 
   function getRoom(code) {
     try { return JSON.parse(localStorage.getItem(key(code)) || 'null'); }
@@ -60,9 +66,9 @@
     const id = playerId();
     const now = Date.now();
     return save({
-      version: 1, code: newCode(), hostId: id, createdAt: now, updatedAt: now, revision: 0,
-      status: 'lobby', selectedGame: 'reveal',
-      players: {[id]: {id, name: clean, joinedAt: now, lastSeen: now}}, game: null
+      version: 2, code: newCode(), hostId: id, createdAt: now, updatedAt: now, revision: 0,
+      status: 'lobby', selectedGame: 'truth', rounds: 5,
+      players: {[id]: {id, name: clean, joinedAt: now, lastSeen: now, ready: true, score: 0, team: 'A'}}, game: null
     });
   }
 
@@ -71,30 +77,64 @@
     const clean = validateName(name);
     const room = getRoom(normalized);
     if (!room) throw new Error('Sala não encontrada neste navegador. Confira o código.');
+    if (room.version !== 2) throw new Error('Esta sala usa uma versão antiga. Crie uma sala nova.');
+    if (Date.now() - room.createdAt > ROOM_LIFETIME_MS) throw new Error('Esta sala expirou. Peça ao organizador para criar outra.');
     if (room.status === 'closed') throw new Error('Esta sala já foi encerrada.');
     const id = playerId();
     const duplicate = Object.values(room.players || {}).some((player) => player.id !== id && player.name.toLowerCase() === clean.toLowerCase());
     if (duplicate) throw new Error('Esse apelido já está em uso na sala.');
     if (!room.players[id] && Object.keys(room.players || {}).length >= 20) throw new Error('A sala já está cheia.');
-    room.players[id] = room.players[id] || {id, name: clean, joinedAt: Date.now()};
+    const teamA = Object.values(room.players || {}).filter((player) => player.team === 'A').length;
+    const teamB = Object.values(room.players || {}).filter((player) => player.team === 'B').length;
+    room.players[id] = room.players[id] || {id, name: clean, joinedAt: Date.now(), ready: false, score: 0, team: teamA <= teamB ? 'A' : 'B'};
     room.players[id].name = clean;
     room.players[id].lastSeen = Date.now();
     return save(room);
   }
 
   function updateRoom(code, updater) {
-    const room = getRoom(code);
-    if (!room) throw new Error('A sala não existe mais.');
-    const changed = updater(structuredClone(room));
-    return save(changed || room);
+    return withLock(code, () => {
+      const room = getRoom(code);
+      if (!room) throw new Error('A sala não existe mais.');
+      const changed = updater(structuredClone(room));
+      return save(changed || room);
+    });
+  }
+
+  function updatePlayer(code, updater) {
+    return withLock(code, () => {
+      const room = getRoom(code);
+      const id = playerId();
+      if (!room?.players?.[id]) throw new Error('Você não está mais nesta sala.');
+      const next = updater(structuredClone(room.players[id])) || room.players[id];
+      next.id = id;
+      room.players[id] = next;
+      return save(room);
+    });
+  }
+
+  function claimHost(code) {
+    return withLock(code, () => {
+      const room = getRoom(code);
+      const id = playerId();
+      if (!room?.players?.[id]) return room;
+      const oldHost = room.players[room.hostId];
+      if (!oldHost || Date.now() - oldHost.lastSeen > 20000) {
+        const onlinePlayers = Object.values(room.players).filter((player) => Date.now() - player.lastSeen < 20000).sort((a, b) => a.joinedAt - b.joinedAt);
+        if (onlinePlayers[0]?.id === id) { room.hostId = id; save(room); }
+      }
+      return room;
+    });
   }
 
   function touch(code) {
-    const id = playerId();
-    const room = getRoom(code);
-    if (!room?.players?.[id]) return room;
-    room.players[id].lastSeen = Date.now();
-    return save(room);
+    return withLock(code, () => {
+      const id = playerId();
+      const room = getRoom(code);
+      if (!room?.players?.[id]) return room;
+      room.players[id].lastSeen = Date.now();
+      return save(room);
+    });
   }
 
   function subscribe(code, listener) {
@@ -115,5 +155,5 @@
     listeners.get(code)?.forEach((listener) => listener(getRoom(code)));
   });
 
-  window.JDRRoomServices = {local: {playerId, normalizeCode, getRoom, createRoom, joinRoom, updateRoom, touch, subscribe}};
+  window.JDRRoomServices = {local: {playerId, normalizeCode, getRoom, createRoom, joinRoom, updateRoom, updatePlayer, claimHost, touch, subscribe}};
 })();

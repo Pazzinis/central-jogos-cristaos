@@ -2,7 +2,7 @@ const DATA = window.MONTE_DATA;
 const $ = (selector) => document.querySelector(selector);
 const screens = [...document.querySelectorAll('.screen')];
 const state = {
-  game: null, duration: 180, rounds: 10, players: 5, teamA: 'Equipe Luz', teamB: 'Equipe Fé',
+  game: null, duration: 180, rounds: 5, players: 5, teamA: 'Equipe Luz', teamB: 'Equipe Fé',
   deck: [], index: 0, score: 0, seconds: 0, active: false, locked: false, baseline: null,
   timer: null, countdown: null, jobs: [], answered: false, clueCount: 1, historyKey: '', timerDeadline: 0,
   teams: [0, 0], currentTeam: 0, playerIndex: 0, infiltratorIndex: 0, secretPair: null, secretVisible: false,
@@ -26,6 +26,24 @@ function shuffle(items) {
 
 const HISTORY_STORAGE_KEY = 'monte-content-history-v1';
 const SITE_URL = 'https://jogosdaraquel.vercel.app/';
+const GAME_BANNERS = {
+  who: 'banner-quem-sou-eu.webp',
+  mime: 'banner-mimica-biblica.webp',
+  clues: 'banner-biblia-cinco-pistas.webp',
+  taboo: 'banner-palavra-proibida.webp',
+  verse: 'banner-complete-versiculo.webp',
+  truth: 'banner-verdadeiro-falso.webp',
+  quote: 'banner-quem-disse-isso.webp',
+  draw: 'banner-desenho-biblico.webp',
+  grace: 'banner-conecte-graca.webp',
+  battle: 'banner-batalha-perguntas.webp',
+  versehunt: 'banner-caca-versiculo.webp',
+  emoji: 'banner-emoji-biblico.webp',
+  reveal: 'banner-imagem-revelada.webp',
+  infiltrator: 'banner-infiltrado.webp',
+  mimechain: 'banner-mimica-sem-fio.webp'
+};
+const ONLINE_ENABLED_GAMES = new Set(['truth', 'verse', 'quote', 'battle', 'clues', 'emoji', 'reveal']);
 
 function itemIdentity(item) {
   if (Array.isArray(item)) return JSON.stringify(item);
@@ -66,10 +84,6 @@ function rememberItem(key, item) {
   seen.add(itemIdentity(item));
   history[key] = [...seen];
   writeHistory(history);
-}
-
-function freshNote() {
-  return '<p class="fresh-note"><b>Novidade:</b> Jogos da Raquel prioriza conteúdos que ainda não apareceram neste aparelho.</p>';
 }
 
 function beep(frequency = 620, duration = .08, delay = 0) {
@@ -127,12 +141,13 @@ function renderCatalog() {
       <header class="category-heading"><div><h2>${category}</h2><p>${descriptions[category]}</p></div><b>${games.length} ${games.length === 1 ? 'jogo' : 'jogos'}</b></header>
       <div class="category-list">${games.map((game) => `
         <article class="catalog-card ${game.id === 'who' ? 'featured' : ''}" data-accent="${game.accent}">
-          <div class="card-art" data-banner-game="${game.id}" aria-hidden="true">
+          <div class="card-art ${GAME_BANNERS[game.id] ? 'has-banner' : ''}" data-banner-game="${game.id}" aria-hidden="true">
+            ${GAME_BANNERS[game.id] ? `<img class="card-art-image" src="${GAME_BANNERS[game.id]}" alt="" loading="lazy" decoding="async">` : ''}
             <span class="catalog-icon">${game.icon}</span>
             <span class="card-art-pattern"></span>
           </div>
           <div class="card-copy">
-            <span class="card-category">${game.category}</span>
+            <span class="card-category">${game.category}${ONLINE_ENABLED_GAMES.has(game.id) ? '<b class="online-badge">ONLINE</b>' : ''}</span>
             <h3>${game.title}</h3>
             <p>${game.description}</p>
           </div>
@@ -146,76 +161,32 @@ function renderCatalog() {
 }
 
 const HOW_TO_GUIDES = {
-  cards: {
-    players: '3 ou mais pessoas',
-    preparation: 'Escolha o tempo da rodada e deixe o celular com quem dará as pistas.',
-    steps: ['Uma carta aparece na tela.', 'A pessoa representa, desenha ou dá pistas conforme a regra do jogo.', 'Marque “Acertei” ou “Passei” para seguir para a próxima carta.'],
-    scoring: 'Cada acerto vale 1 ponto. Tentem superar a pontuação na próxima rodada.'
-  },
-  quiz: {
-    players: '1 pessoa ou um grupo',
-    preparation: 'Escolha 5 ou 10 rodadas e decidam se as respostas serão individuais ou em conjunto.',
-    steps: ['Leia a pergunta em voz alta.', 'Escolha uma das alternativas.', 'Confira a resposta e a explicação antes de avançar.'],
-    scoring: 'Cada resposta correta vale 1 ponto.'
-  },
-  clues: {
-    players: '2 ou mais pessoas',
-    preparation: 'Escolha 5 ou 10 personagens para a partida.',
-    steps: ['A primeira pista aparece valendo 5 pontos.', 'Revele outra pista se o grupo ainda não souber.', 'Quando descobrirem, marque o acerto; quanto menos pistas usarem, mais pontos ganham.'],
-    scoring: 'A rodada começa valendo 5 pontos e perde 1 ponto a cada nova pista.'
-  },
-  battle: {
-    players: '2 equipes',
-    preparation: 'Dividam a turma e deem um nome para cada equipe.',
-    steps: ['As equipes respondem alternadamente.', 'Leia a pergunta e escolha a resposta da equipe da vez.', 'Depois da explicação, passe o celular e avance.'],
-    scoring: 'Cada resposta correta vale 1 ponto para a equipe da vez.'
-  },
-  infiltrator: {
-    players: '4 a 12 pessoas',
-    preparation: 'Sentem-se em roda e escolham quantas pessoas vão jogar.',
-    steps: ['Passe o celular para cada pessoa ver sua palavra em segredo.', 'Cada participante dá uma pista curta sem revelar a palavra.', 'Conversem, votem e só então revelem quem era o infiltrado.'],
-    scoring: 'O grupo vence se descobrir o infiltrado; ele vence se escapar da votação.'
-  },
-  grace: {
-    players: '3 ou mais pessoas',
-    preparation: 'Escolha 5 ou 10 objetos e defina a ordem dos participantes.',
-    steps: ['A pessoa recebe um objeto aleatório.', 'Ela pensa por 30 segundos.', 'Depois tem 1 minuto para conectar o objeto à graça de Jesus.'],
-    scoring: 'O grupo decide se a conexão foi clara e fez sentido.'
-  },
-  versehunt: {
-    players: '2 equipes',
-    preparation: 'Cada equipe precisa de pelo menos uma Bíblia física.',
-    steps: ['O mediador lê a pista mostrada no celular.', 'As equipes procuram a passagem sem usar o celular.', 'Marque quem encontrou primeiro e revele a referência.'],
-    scoring: 'A primeira equipe a encontrar corretamente ganha 1 ponto.'
-  },
-  reveal: {
-    players: '2 ou mais pessoas',
-    preparation: 'Escolha 5 ou 10 imagens e deixe a tela visível para todos.',
-    steps: ['A imagem começa bastante desfocada.', 'A cada etapa ela fica mais nítida.', 'Quando o grupo souber a história, marque o acerto e confira a resposta.'],
-    scoring: 'Quanto mais cedo acertarem, mais pontos a imagem vale.'
-  },
-  mimechain: {
-    players: '3 a 12 pessoas',
-    preparation: 'Formem uma fila; somente a primeira pessoa pode ver a história inicial.',
-    steps: ['A primeira pessoa faz a mímica para a segunda.', 'Cada pessoa repete apenas o que entendeu para a próxima.', 'A última diz qual história acredita ter recebido.'],
-    scoring: 'O grupo marca o ponto quando a resposta final preserva a história original.'
-  }
+  who: ['Coloque o celular na testa, com o nome virado para o grupo.', 'Faça perguntas que possam ser respondidas apenas com “sim” ou “não”.', 'Quando descobrir o personagem, incline para acertar. Incline para o outro lado para pular.'],
+  mime: ['Veja em segredo a palavra mostrada no celular.', 'Represente a palavra usando somente gestos, sem falar ou fazer sons.', 'Quando o grupo adivinhar, toque em “Acertei”. Para trocar, toque em “Passei”.'],
+  clues: ['Leia a primeira pista e tente descobrir o personagem.', 'Se precisar, revele outra pista. Cada nova pista reduz o valor da rodada.', 'Toque em “Acertei” quando souber ou em “Não sei” para revelar a resposta.'],
+  taboo: ['Veja a palavra principal e as palavras proibidas no celular.', 'Explique a palavra principal sem falar nenhum dos termos proibidos.', 'Marque “Acertei” quando o grupo descobrir ou “Passei” para trocar.'],
+  verse: ['Leia o trecho do versículo mostrado na tela.', 'Escolha a palavra que completa corretamente a frase.', 'Confira a resposta e a referência antes de avançar.'],
+  truth: ['Leia a afirmação bíblica mostrada na tela.', 'Escolha “Verdadeiro” ou “Falso”.', 'Confira a explicação e avance para a próxima afirmação.'],
+  quote: ['Leia a frase bíblica mostrada na tela.', 'Escolha qual personagem disse a frase.', 'Confira a resposta e a referência antes de continuar.'],
+  draw: ['Veja em segredo o que deve ser desenhado.', 'Desenhe no papel sem escrever letras, números ou palavras.', 'Marque “Acertei” quando o grupo descobrir ou “Passei” para trocar.'],
+  grace: ['Veja o objeto sorteado e pense por 30 segundos.', 'Você terá 1 minuto para relacionar o objeto à graça de Jesus.', 'Depois da apresentação, o grupo decide se a conexão fez sentido.'],
+  battle: ['Dividam o grupo em duas equipes e escolham os nomes.', 'A equipe da vez responde à pergunta mostrada no celular.', 'Depois da resposta, a vez passa automaticamente para a outra equipe.'],
+  versehunt: ['Dividam o grupo em duas equipes e deixem as Bíblias físicas prontas.', 'Leiam a pista e procurem a passagem o mais rápido possível.', 'Quem encontrar lê o trecho, e o mediador marca o resultado no celular.'],
+  emoji: ['Observe a sequência de emojis mostrada no celular.', 'Conversem e descubram qual personagem ou história ela representa.', 'Toque para revelar a resposta e depois avance.'],
+  reveal: ['Mostre a imagem desfocada para todo o grupo.', 'A imagem fica mais nítida a cada 5 segundos.', 'Toque em “Acertei” quando descobrirem ou em “Não sei” para revelar.'],
+  infiltrator: ['Passe o celular para cada pessoa ver sua palavra em segredo.', 'Cada participante dá uma pista curta, sem dizer a palavra.', 'Conversem, votem em quem parece diferente e revelem o infiltrado.'],
+  mimechain: ['Somente a primeira pessoa vê a história no celular.', 'Ela faz a mímica para a próxima, que repete apenas o que entendeu.', 'A última pessoa diz a resposta antes de revelar a história original.']
 };
 
 function openHowToPlay(gameId) {
   const game = DATA.games.find((item) => item.id === gameId);
   if (!game) return;
-  const guide = HOW_TO_GUIDES[game.mode] || HOW_TO_GUIDES.cards;
+  const steps = HOW_TO_GUIDES[game.id] || ['Leia o desafio mostrado no celular.', 'Siga a instrução da tela com o grupo.', 'Avance quando a rodada terminar.'];
   const dialog = $('#how-to-dialog');
   $('#how-to-icon').textContent = game.icon;
   $('#how-to-category').textContent = game.category;
   $('#how-to-title').textContent = game.title;
-  $('#how-to-description').textContent = game.description;
-  $('#how-to-main-rule').textContent = game.rules;
-  $('#how-to-players').textContent = guide.players;
-  $('#how-to-preparation').textContent = guide.preparation;
-  $('#how-to-steps').innerHTML = guide.steps.map((step) => `<li>${step}</li>`).join('');
-  $('#how-to-scoring').textContent = guide.scoring;
+  $('#how-to-steps').innerHTML = steps.map((step) => `<li>${step}</li>`).join('');
   $('#how-to-start').dataset.game = game.id;
   if (typeof dialog.showModal === 'function') dialog.showModal();
   else dialog.setAttribute('open', '');
@@ -227,11 +198,24 @@ function closeHowToPlay() {
   else dialog.removeAttribute('open');
 }
 
+function maxRoundsForGame() {
+  if (state.game?.mode === 'reveal') return Math.min(20, DATA.revealImages.length);
+  return 20;
+}
+
+function roundsStepper() {
+  const maximum = maxRoundsForGame();
+  return `<div class="rounds-control" aria-label="Quantidade de rodadas">
+    <button data-action="rounds-down" aria-label="Diminuir uma rodada" ${state.rounds <= 1 ? 'disabled' : ''}>−</button>
+    <span><strong id="rounds-count">${state.rounds}</strong><small>${state.rounds === 1 ? 'rodada' : 'rodadas'}</small></span>
+    <button data-action="rounds-up" aria-label="Aumentar uma rodada" ${state.rounds >= maximum ? 'disabled' : ''}>+</button>
+  </div>${maximum < 20 ? `<p class="rounds-limit">Este jogo tem ${maximum} rodadas diferentes disponíveis.</p>` : ''}`;
+}
+
 function openSetup(gameId) {
   clearRunning();
   state.game = DATA.games.find((game) => game.id === gameId);
-  if (state.game.mode === 'mimechain' && ![3,5].includes(state.rounds)) state.rounds = 5;
-  if (['quiz','clues','grace','reveal'].includes(state.game.mode) && ![5,10].includes(state.rounds)) state.rounds = 10;
+  state.rounds = Math.min(maxRoundsForGame(), Math.max(1, state.rounds || 5));
   $('.setup-screen').dataset.mode = state.game.mode;
   $('#setup-icon').textContent = state.game.icon;
   $('#setup-kicker').textContent = state.game.category.toUpperCase();
@@ -247,29 +231,26 @@ function renderSetupPanel() {
     panel.innerHTML = `<h3>Escolha o ritmo</h3><p>O conteúdo é o mesmo; muda apenas o tempo da rodada.</p>
       <div class="choice-list">
         ${[[180,'Relaxado','3 minutos'],[120,'Normal','2 minutos'],[60,'Relâmpago','1 minuto']].map(([value,title,label]) => `<button class="choice-button ${state.duration === value ? 'selected' : ''}" data-duration="${value}"><span><strong>${title}</strong><small>${label}</small></span><b>${label}</b></button>`).join('')}
-      </div>${freshNote()}<button class="primary-button" data-action="start-game">Começar em tela cheia <span>→</span></button>`;
+      </div><button class="primary-button" data-action="start-game">Começar em tela cheia <span>→</span></button>`;
   } else if (state.game.mode === 'quiz' || state.game.mode === 'clues') {
-    panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>Jogue sozinho ou responda em grupo.</p>
-      <div class="choice-list">${[5,10].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 5 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
-      ${freshNote()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
+    panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>Escolha quantos desafios vocês querem jogar.</p>
+      ${roundsStepper()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
   } else if (state.game.mode === 'battle' || state.game.mode === 'versehunt') {
-    panel.innerHTML = `<h3>Prepare as equipes</h3><p>${state.game.mode === 'versehunt' ? 'Serão 10 buscas. Tenham Bíblias físicas por perto.' : 'Serão 10 perguntas, alternando automaticamente.'}</p>
+    panel.innerHTML = `<h3>Prepare as equipes</h3><p>${state.game.mode === 'versehunt' ? 'Tenham Bíblias físicas por perto.' : 'As equipes responderão alternadamente.'}</p>
       <div class="field"><label for="team-a">Equipe A</label><input id="team-a" maxlength="20" value="${state.teamA}"></div>
       <div class="field"><label for="team-b">Equipe B</label><input id="team-b" maxlength="20" value="${state.teamB}"></div>
-      ${freshNote()}<button class="primary-button" data-action="start-game">${state.game.mode === 'versehunt' ? 'Começar a busca' : 'Iniciar batalha'} <span>⚡</span></button>`;
+      <h4 class="setup-label">Quantidade de rodadas</h4>${roundsStepper()}<button class="primary-button" data-action="start-game">${state.game.mode === 'versehunt' ? 'Começar a busca' : 'Iniciar batalha'} <span>⚡</span></button>`;
   } else if (state.game.mode === 'grace' || state.game.mode === 'reveal') {
-    panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>${state.game.mode === 'grace' ? 'Cada pessoa recebe um novo objeto.' : 'Cada imagem vale até 5 pontos.'}</p>
-      <div class="choice-list">${[5,10].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 5 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
-      ${freshNote()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
+    panel.innerHTML = `<h3>Quantidade de rodadas</h3><p>${state.game.mode === 'grace' ? 'Cada rodada sorteia um novo objeto.' : 'Cada rodada revela uma nova imagem.'}</p>
+      ${roundsStepper()}<button class="primary-button" data-action="start-game">Começar <span>→</span></button>`;
   } else if (state.game.mode === 'mimechain') {
     panel.innerHTML = `<h3>Prepare a fila</h3><p>Escolha quantas pessoas participarão da corrente.</p>
       <div class="stepper"><button data-action="players-down" aria-label="Diminuir jogadores">−</button><strong><span id="players-count">${state.players}</span> jogadores</strong><button data-action="players-up" aria-label="Aumentar jogadores">+</button></div>
-      <div class="choice-list">${[3,5].map((value) => `<button class="choice-button ${state.rounds === value ? 'selected' : ''}" data-rounds="${value}"><span><strong>${value} rodadas</strong><small>${value === 3 ? 'partida rápida' : 'partida completa'}</small></span><b>→</b></button>`).join('')}</div>
-      ${freshNote()}<button class="primary-button" data-action="start-game">Começar a corrente <span>↝</span></button>`;
+      <h4 class="setup-label">Quantidade de rodadas</h4>${roundsStepper()}<button class="primary-button" data-action="start-game">Começar a corrente <span>↝</span></button>`;
   } else {
     panel.innerHTML = `<h3>Quantos jogadores?</h3><p>O celular será passado de mão em mão.</p>
       <div class="stepper"><button data-action="players-down" aria-label="Diminuir jogadores">−</button><strong><span id="players-count">${state.players}</span> jogadores</strong><button data-action="players-up" aria-label="Aumentar jogadores">+</button></div>
-      ${freshNote()}<button class="primary-button" data-action="start-game">Distribuir palavras <span>◉</span></button>`;
+      <button class="primary-button" data-action="start-game">Distribuir palavras <span>◉</span></button>`;
   }
 }
 
@@ -403,11 +384,11 @@ function renderClue(revealAnswer=false) {
 }
 
 function startBattle() {
-  const pool=[...DATA.quizzes.truth,...DATA.quizzes.quote,...DATA.quizzes.verse];state.historyKey='battle';state.deck=freshDeck(pool,state.historyKey).slice(0,10);state.index=0;state.teams=[0,0];state.currentTeam=0;state.active=true;configurePlay();$('#score-label').textContent='RODADA';renderBattle();
+  const pool=[...DATA.quizzes.truth,...DATA.quizzes.quote,...DATA.quizzes.verse];state.historyKey='battle';state.deck=freshDeck(pool,state.historyKey).slice(0,state.rounds);state.index=0;state.teams=[0,0];state.currentTeam=0;state.active=true;configurePlay();$('#score-label').textContent='RODADA';renderBattle();
 }
 
 function renderBattle() {
-  if(state.index>=state.deck.length){finish('battle');return;}state.answered=false;const item=state.deck[state.index];rememberItem(state.historyKey,item);const names=[state.teamA,state.teamB];$('#score').textContent=`${state.index+1}/10`;$('#turn-label').textContent=`VEZ DE ${names[state.currentTeam].toUpperCase()}`;
+  if(state.index>=state.deck.length){finish('battle');return;}state.answered=false;const item=state.deck[state.index];rememberItem(state.historyKey,item);const names=[state.teamA,state.teamB];$('#score').textContent=`${state.index+1}/${state.deck.length}`;$('#turn-label').textContent=`VEZ DE ${names[state.currentTeam].toUpperCase()}`;
   $('#play-stage').innerHTML=`<div class="stage-inner"><div class="team-board">${names.map((name,index)=>`<span class="team-pill ${index===state.currentTeam?'active':''}">${name}<b>${state.teams[index]}</b></span>`).join('')}</div><h2 class="quiz-question">${item.q}</h2><div class="options">${item.options.map((option,index)=>`<button class="option" data-battle-answer="${index}">${option}</button>`).join('')}</div><div class="explanation" id="explanation">${item.explanation}</div></div>`;$('#play-actions').innerHTML='';
 }
 
@@ -439,14 +420,14 @@ function stopRoundTimer(label = '—') {
 }
 
 function startGrace() {
-  state.historyKey = 'grace'; state.deck = freshDeck(DATA.graceObjects, state.historyKey); state.index = 0;
+  state.historyKey = 'grace'; state.deck = freshDeck(DATA.graceObjects, state.historyKey).slice(0, state.rounds); state.index = 0;
   state.score = 0; state.active = true; state.swapUsed = false; configurePlay(); renderGraceRound();
 }
 
 function renderGraceRound() {
-  if (state.index >= state.rounds) { finish('grace'); return; }
+  if (state.index >= state.deck.length) { finish('grace'); return; }
   state.phase = 'thinking'; const object = state.deck[state.index]; rememberItem(state.historyKey, object);
-  $('#turn-label').textContent = `RODADA ${state.index + 1} DE ${state.rounds}`; $('#score').textContent = state.score; $('#score-label').textContent = 'PONTOS';
+  $('#turn-label').textContent = `RODADA ${state.index + 1} DE ${state.deck.length}`; $('#score').textContent = state.score; $('#score-label').textContent = 'PONTOS';
   $('#play-stage').innerHTML = `<div class="stage-inner"><p class="stage-kicker" id="grace-status">30 SEGUNDOS PARA PENSAR</p><div class="object-card"><small>SEU OBJETO É</small><h2>${object}</h2><p>Crie uma ilustração que conecte este objeto à graça de Jesus.</p></div></div>`;
   $('#play-actions').innerHTML = `<button class="action-secondary" data-action="swap-grace" ${state.swapUsed ? 'disabled' : ''}>Trocar objeto</button><button class="action-primary" data-action="start-grace-pitch">Apresentar agora →</button>`;
   startRoundTimer(30, startGracePitch);
@@ -475,7 +456,7 @@ function scoreGrace(success) {
 }
 
 function startVerseHunt() {
-  state.historyKey = 'versehunt'; state.deck = freshDeck(DATA.verseHunt, state.historyKey).slice(0, 10);
+  state.historyKey = 'versehunt'; state.deck = freshDeck(DATA.verseHunt, state.historyKey).slice(0, state.rounds);
   state.index = 0; state.teams = [0, 0]; state.score = 0; state.active = true; configurePlay(); renderVerseHunt();
 }
 
@@ -607,7 +588,7 @@ function finish(type) {
   if(type==='infiltrator'){showScreen('home');try{if(document.fullscreenElement)document.exitFullscreen();}catch(_){}return;}
   if(type==='battle'||type==='versehunt'){const names=[state.teamA,state.teamB];final=`${state.teams[0]} × ${state.teams[1]}`;label=`${names[0]} · ${names[1]}`;message=state.teams[0]===state.teams[1]?'Empate! As duas equipes mandaram muito bem.':`${names[state.teams[0]>state.teams[1]?0:1]} venceu ${type==='versehunt'?'a busca':'a batalha'}!`;}
   else if(type==='cards'){label='ACERTOS';message=state.score>=10?'Vocês estão afiados! Que rodada incrível.':state.score>=5?'Mandaram muito bem nessa rodada!':'Boa tentativa! A próxima vai ser ainda melhor.';}
-  else if(type==='grace'){label='CONEXÕES';message=`O grupo aprovou ${state.score} de ${state.rounds} conexões com a graça.`;}
+  else if(type==='grace'){label='CONEXÕES';message=`O grupo aprovou ${state.score} de ${state.deck.length} conexões com a graça.`;}
   else if(type==='mimechain'){label='HISTÓRIAS';message=`A corrente preservou ${state.score} de ${state.deck.length} histórias.`;}
   else if(type==='reveal'){label='PONTOS';message=`Vocês somaram ${state.score} pontos reconhecendo as imagens.`;}
   else message=`Você acertou ${state.score} de ${state.deck.length}.`;
@@ -665,10 +646,9 @@ window.addEventListener('deviceorientation',(event)=>{
 },true);
 
 document.addEventListener('click',(event)=>{
-  const target=event.target.closest('[data-action],[data-game],[data-duration],[data-rounds],[data-answer],[data-battle-answer]');if(!target)return;
+  const target=event.target.closest('[data-action],[data-game],[data-duration],[data-answer],[data-battle-answer]');if(!target)return;
   if(target.dataset.game){if(target.closest('#how-to-dialog'))closeHowToPlay();openSetup(target.dataset.game);return;}
   if(target.dataset.duration){state.duration=Number(target.dataset.duration);renderSetupPanel();return;}
-  if(target.dataset.rounds){state.rounds=Number(target.dataset.rounds);renderSetupPanel();return;}
   if(target.dataset.answer!==undefined){answerQuestion(Number(target.dataset.answer));return;}
   if(target.dataset.battleAnswer!==undefined){answerBattle(Number(target.dataset.battleAnswer));return;}
   const action=target.dataset.action;
@@ -684,6 +664,8 @@ document.addEventListener('click',(event)=>{
   else if(action==='start-game')startGame();
   else if(action==='players-down'){state.players=Math.max(3,state.players-1);renderSetupPanel();}
   else if(action==='players-up'){state.players=Math.min(12,state.players+1);renderSetupPanel();}
+  else if(action==='rounds-down'){state.rounds=Math.max(1,state.rounds-1);renderSetupPanel();}
+  else if(action==='rounds-up'){state.rounds=Math.min(maxRoundsForGame(),state.rounds+1);renderSetupPanel();}
   else if(action==='card-correct')cardFeedback(true);
   else if(action==='card-pass')cardFeedback(false);
   else if(action==='reveal-emoji'){$('#emoji-answer').textContent=state.deck[state.index][1];beep(700,.06);}
